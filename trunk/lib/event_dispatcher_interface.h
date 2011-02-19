@@ -21,7 +21,7 @@ class EventDispatcherInterface {
   // transferred to this object.
   //
   // Returns true if successful
-  virtual bool enqueueTask(std::tr1::function<void()> *newTask) = 0;
+  virtual bool enqueueTask(const std::tr1::function<void()> &newTask) = 0;
 
   // Finishes all remaining tasks and stops accepting new task. Any new tasks
   // that is going to be enqueued will be discarded.

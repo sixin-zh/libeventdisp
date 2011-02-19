@@ -10,7 +10,7 @@ EventDispatcher::EventDispatcher(void) {
 EventDispatcher::~EventDispatcher() {
 }
 
-bool EventDispatcher::enqueueTask(function<void()> *newTask) {
+bool EventDispatcher::enqueueTask(const function<void()> &newTask) {
   return true;
 }
 

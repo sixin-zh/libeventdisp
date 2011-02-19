@@ -44,7 +44,7 @@ class MPEventDispatcher : public EventDispatcherInterface {
   // TaskGroupID of 0.
   //
   // Returns true if successful
-  bool enqueueTask(std::tr1::function<void()> *newTask);
+  bool enqueueTask(const std::tr1::function<void()> &newTask);
 
   // Adds a new task with the given TaskGroupID.
   //

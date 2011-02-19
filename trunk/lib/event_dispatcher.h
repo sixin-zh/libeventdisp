@@ -32,7 +32,7 @@ class EventDispatcher : public EventDispatcherInterface {
   // Destroys this object. All remaining tasks in the queue are discarded.
   virtual ~EventDispatcher();
   
-  bool enqueueTask(std::tr1::function<void()> *newTask);
+  bool enqueueTask(const std::tr1::function<void()> &newTask);
   void stop(void);
   void resume(void);
 
