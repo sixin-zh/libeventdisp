@@ -1,0 +1,20 @@
+CXX = g++
+CXXFLAGS = -Wall -O2 -fPIC
+
+OBJ = event_dispatcher.o mp_event_dispatcher.o
+TARGET = libeventdisp.so
+
+$(TARGET): $(OBJ)
+	@echo $@
+	@$(CXX) -shared -Wl,-soname,$@ -o $@ $^
+	mv $@ ../build/
+
+%.o: %.cc %.h
+	@echo $@
+	@$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+.phony: clean
+
+clean:
+	rm *.o ../build/$(TARGET)
+
