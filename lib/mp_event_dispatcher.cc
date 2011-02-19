@@ -13,7 +13,7 @@ MPEventDispatcher::MPEventDispatcher(size_t concurrentTaskCount) {
 MPEventDispatcher::~MPEventDispatcher() {
 }
 
-bool MPEventDispatcher::enqueueTask(function<void()> *newTask) {
+bool MPEventDispatcher::enqueueTask(const function<void()> &newTask) {
   return true;
 }
 
