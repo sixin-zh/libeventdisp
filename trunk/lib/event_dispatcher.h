@@ -16,10 +16,11 @@
 #define LIBEVENTDISP_EVENT_DISPATCHER_H_
 
 #include <tr1/functional>
-#include <vector>
+#include <queue>
 
 #include "event_dispatcher_interface.h"
 #include "util.h"
+#include "lock.h"
 
 namespace nyu_libeventdisp {
 // A simple event dispatcher that can handle one task at a time. The enqueued
@@ -29,15 +30,44 @@ class EventDispatcher : public EventDispatcherInterface {
   // Creates a new event dispatcher object.
   EventDispatcher(void);
   
-  // Destroys this object. All remaining tasks in the queue are discarded.
+  // Destroys this object.
+  //
+  // Warning: All remaining tasks in the queue are discarded.
+  // Mutex usage: stoppedMutex_
   virtual ~EventDispatcher();
-  
+
+  // Mutex usage: queueMutex_
   bool enqueueTask(const std::tr1::function<void()> &newTask);
+
+  // Mutex usage: stoppedMutex_
   void stop(void);
+
+  // Mutex usage: stoppedMutex_
   void resume(void);
 
+  // Returns true if there there is still pending task.
+  //
+  // Mutex usage: queueMutex_
+  bool busy(void);
+
  private:
-  std::vector<std::tr1::function<void()> *> taskQueue_;
+  base::Mutex queueMutex_;
+  base::Mutex stoppedMutex_;
+  
+  base::ConditionVar newTaskCond_;
+  pthread_t eventLoopThread_;
+
+  // Guarded by queueMutex_
+  std::queue<std::tr1::function<void()> *> taskQueue_;
+
+  // Guarded by stoppedMutex_
+  bool isStopped;
+  bool isDying;
+  
+  // Runs the event loop
+  //
+  // Mutex usage: queueMutex_
+  void eventLoop(void);
   
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);
 };
