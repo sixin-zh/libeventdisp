@@ -13,12 +13,11 @@ MPEventDispatcher::MPEventDispatcher(size_t concurrentTaskCount) {
 MPEventDispatcher::~MPEventDispatcher() {
 }
 
-bool MPEventDispatcher::enqueueTask(const function<void()> &newTask) {
+bool MPEventDispatcher::enqueueTask(const UnitTask &newTask) {
   return true;
 }
 
-bool MPEventDispatcher::enqueueTask(function<void()> *newTask,
-                                    const TaskGroupID &id) {
+bool MPEventDispatcher::enqueueTask(const UnitTask &newTask, const TaskGroupID &id) {
   return true;
 }
 

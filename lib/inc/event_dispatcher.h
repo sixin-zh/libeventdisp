@@ -37,7 +37,11 @@ class EventDispatcher : public EventDispatcherInterface {
   virtual ~EventDispatcher();
 
   // Mutex usage: queueMutex_
-  bool enqueueTask(const std::tr1::function<void()> &newTask);
+  bool enqueueTask(const UnitTask &newTask);
+
+  // Note: id is ignored.
+  // Mutex usage: queueMutex_
+  bool enqueueTask(const UnitTask &newTask, const TaskGroupID &id);
 
   // Mutex usage: stoppedMutex_
   void stop(void);
@@ -58,7 +62,8 @@ class EventDispatcher : public EventDispatcherInterface {
   pthread_t eventLoopThread_;
 
   // Guarded by queueMutex_
-  std::queue<std::tr1::function<void()> *> taskQueue_;
+  std::queue<UnitTask *> taskQueue_;
+  bool isExecuting;
 
   // Guarded by stoppedMutex_
   bool isStopped;
@@ -68,7 +73,7 @@ class EventDispatcher : public EventDispatcherInterface {
   //
   // Mutex usage: queueMutex_
   void eventLoop(void);
-  
+
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);
 };
 }

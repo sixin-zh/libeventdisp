@@ -27,16 +27,9 @@ TEST(EventDispatcherTest, EventLoop) {
                                             rand() % MAX_ITER)));
   }
 
-#if 0
   while (dispatcher.busy()) {
     // Keep on looping until all task are done
   }
-#else
-  // TODO: change to be time independent. Reason for using sleep - the loop
-  // above is not fool proof, as the last task can be dequeued (thus making
-  // the queue empty) while still executing.
-  sleep(2);
-#endif
   
   EXPECT_EQ(MAX_ITER, val);
 }

@@ -1,7 +1,7 @@
 CXX = g++
-CXXFLAGS = -Wall -O2 -fPIC -lpthread
+CXXFLAGS = -Wall -O2 -fPIC -lpthread -Iinc
 
-OBJ = event_dispatcher.o mp_event_dispatcher.o thread.o
+OBJ = event_dispatcher.o mp_event_dispatcher.o thread.o dispatcher.o
 TARGET = libeventdisp.so
 
 $(TARGET): $(OBJ)
