@@ -20,7 +20,7 @@ GTEST_DIR = ..
 USER_DIR = .
 
 # Flags passed to the preprocessor.
-CPPFLAGS += -I$(GTEST_DIR)/include -I$(GTEST_DIR)/../lib
+CPPFLAGS += -I$(GTEST_DIR)/include -I$(GTEST_DIR)/../lib/inc
 
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra -L$(GTEST_DIR)/../build -leventdisp
