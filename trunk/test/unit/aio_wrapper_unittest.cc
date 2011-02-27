@@ -22,7 +22,7 @@ const char *READ_TEST_FILE = "read_test";
 const char *WRITE_TEST_FILE = "write_test";
 
 const size_t BUFF_SIZE = 1024;
-const long IO_TIMEOUT = 10; //sec
+const long IO_TIMEOUT = 3; //sec
 
 void readCallback(Mutex *mutex, ConditionVar *cond, int fd, void *buff,
                   size_t len) {
