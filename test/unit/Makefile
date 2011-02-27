@@ -27,7 +27,7 @@ CXXFLAGS += -g -Wall -Wextra -L$(GTEST_DIR)/../build -leventdisp
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = event_dispatcher_unittest
+TESTS = all_test event_dispatcher_unittest aio_wrapper_unittest
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -73,7 +73,22 @@ event_dispatcher_unittest.o : $(USER_DIR)/event_dispatcher_unittest.cc \
                               $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
 
+aio_wrapper_unittest.o : $(USER_DIR)/aio_wrapper_unittest.cc \
+                              $(GTEST_HEADERS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
+
 event_dispatcher_unittest : event_dispatcher_unittest.o \
                             $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+
+aio_wrapper_unittest : aio_wrapper_unittest.o \
+                            $(GTEST_DIR)/gtest_main.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+
+all_test : all_test.cc event_dispatcher_unittest.o aio_wrapper_unittest.o \
+                            $(GTEST_DIR)/gtest_main.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+
+#aio_wrapper_unittest.o : 
+#	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
 
