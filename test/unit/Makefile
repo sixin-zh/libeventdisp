@@ -81,11 +81,11 @@ event_dispatcher_unittest : event_dispatcher_unittest.o \
                             $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
 
-aio_wrapper_unittest : aio_wrapper_unittest.o \
+aio_wrapper_unittest : custom_main.cc aio_wrapper_unittest.o \
                             $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
 
-all_test : all_test.cc event_dispatcher_unittest.o aio_wrapper_unittest.o \
+all_test : custom_main.cc event_dispatcher_unittest.o aio_wrapper_unittest.o \
                             $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
 
