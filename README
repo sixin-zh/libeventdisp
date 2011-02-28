@@ -1,0 +1,32 @@
+================================================================================
+Requirements:
+1. Linux kernel version >= 2.6 or the aio library.
+2. pthreads library.
+
+================================================================================
+Building the shared library:
+
+1. Go to the lib directory.
+2. Type "make".
+3. libeventdisp.so will be created at the build library.
+
+================================================================================
+Running the unit tests.
+
+1. Make sure that the libeventdisp.so is already built before resuming.
+2. Go to test/unit.
+3. Type "make".
+4. Run "all_test" to run all test or choose an individual test to run.
+
+===============================================
+Note:
+
+The library will be installed in the /usr/lib in the future on stable release, 
+but during the alpha version, it will just in the build directory, so an error
+will occur when trying to run the binary since it can't find the library. The 
+temporary solution for this is to set the LD_LIBRARY_PATH to include the 
+location of the library before running the binary. For example, in Ubuntu, type
+the following when inside the test/unit directory:
+
+export LD_LIBRARY_PATH=../../build
+
