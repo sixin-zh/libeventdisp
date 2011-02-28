@@ -74,6 +74,27 @@ int aio_read_(int fd, void *buff, off_t offset, size_t len, IOCallback *callback
 
   return ret;
 }
+
+// The entry point of all aio_write wrapper functions
+int aio_write_(int fd, void *buff, off_t offset, size_t len, IOCallback *callback,
+               IOErrCallback *errorCallback) {
+  aiocb *aioCB = new aiocb();
+
+  memset(reinterpret_cast<char *>(aioCB), 0, sizeof(aiocb));
+  aioCB->aio_buf = buff;
+  aioCB->aio_fildes = fd;
+  aioCB->aio_nbytes = len;
+  aioCB->aio_offset = offset;
+  
+  int ret = aio_write(aioCB);
+
+  if (ret >= 0) {
+    checkIOProgress(aioCB, callback, errorCallback);
+  }
+
+  return ret;
+}
+
 } //namespace
 
 namespace nyu_libeventdisp {
@@ -91,12 +112,16 @@ int aio_read(int fd, void *buff, size_t len, IOCallback callback,
 }
 
 int aio_write(int fd, void *buff, size_t len, IOCallback callback) {
-  return 0;
+  return aio_write_(fd, buff, DEFAULT_OFFSET, len,
+                    new function<void (int, volatile void*, ssize_t)>(callback),
+                    new function<void (int, int)>(dummyErrorCallback));
 }
 
 int aio_write(int fd, void *buff, size_t len, IOCallback callback,
               IOErrCallback errorCallback) {
-  return 0;
+  return aio_write_(fd, buff, DEFAULT_OFFSET, len,
+                    new function<void (int, volatile void*, ssize_t)>(callback),
+                    new function<void (int, int)>(errorCallback));
 }
 }
 
