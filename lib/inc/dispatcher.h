@@ -19,7 +19,8 @@
 #include "util.h"
 
 namespace nyu_libeventdisp {
-// Singleton class for the event dispatcher.
+// Singleton class for the event dispatcher. The init method should be called
+// first before any operation.
 class Dispatcher {
  public:
   // Initializes the singleton object.
