@@ -20,7 +20,8 @@
 
 namespace nyu_libeventdisp {
 // This file contains wrapper functions for the linux asynchronous I/O with
-// integration with the event dispatcher.
+// integration with the event dispatcher. Dispatcher::init() should be called
+// first before calling any of the functions.
 
 typedef std::tr1::function<void (int, volatile void*, ssize_t)> IOCallback;
 typedef std::tr1::function<void (int, int)> IOErrCallback;
