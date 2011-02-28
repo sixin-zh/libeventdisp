@@ -18,6 +18,7 @@
 #define MCP_BASE_LOCK_HEADER
 
 #include <pthread.h>
+#include <sys/time.h> // gettimeofday
 
 // Convenient wrappers around
 // + pthread_mutex
@@ -73,6 +74,15 @@ public:
     pthread_cond_timedwait(&cv_, &(mutex->m_), timeout);
   }
 
+  void timedWait(Mutex* mutex, long timeout) {
+    timeval now;
+    timespec wakeupTime;
+    gettimeofday(&now, NULL);
+    wakeupTime.tv_sec = now.tv_sec + timeout;
+    wakeupTime.tv_nsec = 0;
+
+    timedWait(mutex, &wakeupTime);
+  }
 
 private:
   pthread_cond_t cv_;

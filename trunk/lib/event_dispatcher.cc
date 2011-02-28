@@ -78,14 +78,8 @@ void EventDispatcher::eventLoop(void) {
     {
       ScopedLock sl(&queueMutex_);
       while (taskQueue_.empty() && !isDying) {
-        timeval now;
-        timespec wakeupTime;
-        gettimeofday(&now, NULL);
-        wakeupTime.tv_sec = now.tv_sec + WAIT_TIMEOUT;
-        wakeupTime.tv_nsec = 0;
-
         // Use timed wait to break from waiting to allow destructor to proceed
-        newTaskCond_.timedWait(&queueMutex_, &wakeupTime);
+        newTaskCond_.timedWait(&queueMutex_, WAIT_TIMEOUT);
       }
 
       if (isDying && taskQueue_.empty()) {

@@ -25,6 +25,9 @@ CPPFLAGS += -I$(GTEST_DIR)/include -I$(GTEST_DIR)/../lib/inc
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra -L$(GTEST_DIR)/../build -leventdisp
 
+# Flags passed to the C++ linker.
+LINKERFLAGS = -lpthread -lrt
+
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
 TESTS = all_test event_dispatcher_unittest aio_wrapper_unittest
@@ -79,16 +82,13 @@ aio_wrapper_unittest.o : $(USER_DIR)/aio_wrapper_unittest.cc \
 
 event_dispatcher_unittest : event_dispatcher_unittest.o \
                             $(GTEST_DIR)/gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
 
 aio_wrapper_unittest : custom_main.cc aio_wrapper_unittest.o \
                             $(GTEST_DIR)/gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
 
 all_test : custom_main.cc event_dispatcher_unittest.o aio_wrapper_unittest.o \
                             $(GTEST_DIR)/gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
-
-#aio_wrapper_unittest.o : 
-#	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
 
