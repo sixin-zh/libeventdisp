@@ -71,6 +71,11 @@ int aio_read_(int fd, void *buff, off_t offset, size_t len, IOCallback *callback
   if (ret >= 0) {
     checkIOProgress(aioCB, callback, errorCallback);
   }
+  else {
+    delete callback;
+    delete errorCallback;
+    delete aioCB;
+  }
 
   return ret;
 }
@@ -90,6 +95,11 @@ int aio_write_(int fd, void *buff, off_t offset, size_t len, IOCallback *callbac
 
   if (ret >= 0) {
     checkIOProgress(aioCB, callback, errorCallback);
+  }
+  else {
+    delete callback;
+    delete errorCallback;
+    delete aioCB;
   }
 
   return ret;
