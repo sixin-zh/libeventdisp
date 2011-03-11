@@ -16,6 +16,7 @@
 #define LIBEVENTDISP_EVENT_DISPATCHER_H_
 
 #include <tr1/functional>
+#include <tr1/unordered_map>
 #include <queue>
 
 #include "event_dispatcher_interface.h"
@@ -37,11 +38,7 @@ class EventDispatcher : public EventDispatcherInterface {
   virtual ~EventDispatcher();
 
   // Mutex usage: queueMutex_
-  bool enqueueTask(const UnitTask &newTask);
-
-  // Note: id is ignored.
-  // Mutex usage: queueMutex_
-  bool enqueueTask(const UnitTask &newTask, const TaskGroupID &id);
+  bool enqueueTask(UnitTask *newTask);
 
   // Mutex usage: stoppedMutex_
   void stop(void);
@@ -54,20 +51,32 @@ class EventDispatcher : public EventDispatcherInterface {
   // Mutex usage: queueMutex_
   bool busy(void);
 
+  // Returns the number of task in the queue.
+  //
+  // Warning: This takes O(Number of different TaskGroupID), so use sparingly.
+  //
+  // Mutex usage: taskCountMutex_
+  size_t pendingTasks(void) const;
+
  private:
+  typedef std::tr1::unordered_map<TaskGroupID, size_t> TaskCountMap;
   base::Mutex queueMutex_;
   base::Mutex stoppedMutex_;
+  mutable base::Mutex taskCountMutex_;
   
   base::ConditionVar newTaskCond_;
   pthread_t eventLoopThread_;
 
   // Guarded by queueMutex_
   std::queue<UnitTask *> taskQueue_;
-  bool isExecuting;
+  bool isExecuting_;
 
+  // Guarded by taskCountMutex_
+  TaskCountMap taskCount_;
+  
   // Guarded by stoppedMutex_
-  bool isStopped;
-  bool isDying;
+  bool isStopped_;
+  bool isDying_;
   
   // Runs the event loop
   //

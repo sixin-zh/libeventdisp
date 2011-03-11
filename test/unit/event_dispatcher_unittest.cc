@@ -4,12 +4,14 @@
 #include <cstdlib>
 
 using nyu_libeventdisp::EventDispatcher;
+using nyu_libeventdisp::UnitTask;
 using std::tr1::bind;
 
 namespace {
 void delayedInc(EventDispatcher *dispatcher, size_t *val, int delay) {
   if (--delay > 0) {
-    dispatcher->enqueueTask(bind(delayedInc, dispatcher, val, delay));
+    dispatcher->enqueueTask(new UnitTask(bind(delayedInc, dispatcher,
+                                              val, delay)));
   }
   else {
     (*val)++;
@@ -25,8 +27,8 @@ TEST(EventDispatcherTest, EventLoop) {
   srand(time(NULL));
 
   for (size_t x = 0; x < MAX_ITER; x++) {
-    EXPECT_TRUE(dispatcher.enqueueTask(bind(delayedInc, &dispatcher, &val,
-                                            rand() % MAX_ITER)));
+    EXPECT_TRUE(dispatcher.enqueueTask(new UnitTask(
+        bind(delayedInc, &dispatcher, &val, rand() % MAX_ITER))));
   }
 
   while (dispatcher.busy()) {
