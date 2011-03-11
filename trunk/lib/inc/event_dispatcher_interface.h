@@ -15,30 +15,21 @@
 #ifndef LIBEVENTDISP_EVENT_DISPATCHER_INTERFACE_H_
 #define LIBEVENTDISP_EVENT_DISPATCHER_INTERFACE_H_
 
-#include <tr1/functional>
+#include "unit_task.h"
 
 namespace nyu_libeventdisp {
-typedef std::tr1::function<void ()> UnitTask;
-typedef unsigned long TaskGroupID;
-
 // Abstract interface for event dispatchers.
 class EventDispatcherInterface {
  public:
   virtual ~EventDispatcherInterface() {
   }
   
-  // Adds a new task to the event dispatcher. A copy of the task should be
-  // created by the implementing function.
+  // Adds a new task to the event dispatcher. The ownership of the new task is
+  // passed to the implementing object.
   //
   // Returns true if successful
-  virtual bool enqueueTask(const UnitTask &newTask) = 0;
+  virtual bool enqueueTask(UnitTask *newTask) = 0;
 
-  // Adds a new task with the given TaskGroupID. A copy of the task should be
-  // created by the implementing function.
-  //
-  // Returns true if successful
-  virtual bool enqueueTask(const UnitTask &newTask, const TaskGroupID &id) = 0;
-  
   // Finishes all remaining tasks and stops accepting new task. Any new tasks
   // that is going to be enqueued will be discarded.
   virtual void stop(void) = 0;

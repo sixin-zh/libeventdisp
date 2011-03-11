@@ -42,10 +42,11 @@ class Dispatcher {
   // Gets the singleton instance
   static Dispatcher* instance();
 
-  // Enqueues a new task to the queue.
+  // Enqueues a new task to the queue. Ownership of newTask is passed to this
+  // object.
   //
   // Returns true if successful
-  bool enqueue(const UnitTask &newTask);
+  bool enqueue(UnitTask *newTask);
 
   // Enqueues a new task to the queue with the given id. id is ignored when not
   // in multiprocessor mode.

@@ -8,11 +8,12 @@
 #include <aio.h>
 #include <cstring>
 
-using nyu_libeventdisp::aio_read;
-using nyu_libeventdisp::aio_write;
+using namespace nyu_libeventdisp;
+
 using base::Mutex;
 using base::ScopedLock;
 using base::ConditionVar;
+
 using std::tr1::bind;
 using namespace std::tr1::placeholders;
 
@@ -24,6 +25,7 @@ const char *WRITE_TEST_FILE = "write_test";
 const char *WRITE_TEST_BUFF = "This is a very simple test\r\n<>qwerty\n";
 
 const size_t BUFF_SIZE = 1024;
+const off_t OFFSET = 0;
 const long IO_TIMEOUT = 1; //sec
 
 void okCallback(Mutex *mutex, ConditionVar *cond, int fd, volatile void *buff,
@@ -56,8 +58,12 @@ TEST(AioWrapperTest, ReadTest) {
   char aioBuff[BUFF_SIZE];
   Mutex mutex;
   ConditionVar readDoneCond;
-  ASSERT_EQ(0, aio_read(aioInputFd, static_cast<void *>(aioBuff), BUFF_SIZE,
-                        bind(okCallback, &mutex, &readDoneCond, _1, _2, _3)));
+  IOOkCallback *okCB = new IOOkCallback(bind(okCallback, &mutex,
+                                             &readDoneCond, _1, _2, _3));
+  IOCallback *ioCB = new IOCallback(okCB, NULL);
+  
+  ASSERT_EQ(0, aio_read(aioInputFd, static_cast<void *>(aioBuff),
+                        BUFF_SIZE, OFFSET, ioCB));
 
   {
     ScopedLock sl(&mutex);
@@ -77,10 +83,16 @@ TEST(AioWrapperTest, ReadErrTest) {
   ConditionVar readDoneCond;
   int errOccured = 0;
   
-  ASSERT_EQ(0, aio_read(aioInputFd, static_cast<void *>(aioBuff), BUFF_SIZE,
-                        bind(okCallback, &mutex, &readDoneCond, _1, _2, _3),
-                        bind(errCallback, &mutex, &readDoneCond,
-                             _1, _2, &errOccured)));
+  IOOkCallback *okCB = new IOOkCallback(bind(okCallback, &mutex,
+                                             &readDoneCond, _1, _2, _3));
+  IOErrCallback *errCB =
+      new IOErrCallback(bind(errCallback, &mutex,
+                             &readDoneCond, _1, _2, &errOccured));
+  IOCallback *ioCB = new IOCallback(okCB, errCB);
+  
+  ASSERT_EQ(0, aio_read(aioInputFd, static_cast<void *>(aioBuff),
+                        BUFF_SIZE, OFFSET, ioCB));
+
   
   aio_cancel(aioInputFd, NULL);
   close(aioInputFd);
@@ -100,13 +112,14 @@ TEST(AioWrapperTest, WriteTest) {
   char aioBuff[BUFF_SIZE];
   Mutex mutex;
   ConditionVar writeDoneCond;
-  int errOccured = 0;
   
   strcpy(aioBuff, WRITE_TEST_BUFF);
-  ASSERT_EQ(0, aio_write(aioOutputFd, static_cast<void *>(aioBuff), BUFF_SIZE,
-                         bind(okCallback, &mutex, &writeDoneCond, _1, _2, _3),
-                         bind(errCallback, &mutex, &writeDoneCond,
-                              _1, _2, &errOccured)));
+  IOOkCallback *okCB = new IOOkCallback(bind(okCallback, &mutex,
+                                             &writeDoneCond, _1, _2, _3));
+  IOCallback *ioCB = new IOCallback(okCB, NULL);
+  
+  ASSERT_EQ(0, aio_write(aioOutputFd, static_cast<void *>(aioBuff),
+                         BUFF_SIZE, OFFSET, ioCB));
 
   {
     ScopedLock sl(&mutex);
@@ -130,12 +143,18 @@ TEST(AioWrapperTest, WriteErrTest) {
   Mutex mutex;
   ConditionVar writeDoneCond;
   int errOccured = 0;
-
+  
   strcpy(aioBuff, WRITE_TEST_BUFF);
-  ASSERT_EQ(0, aio_write(aioOutputFd, static_cast<void *>(aioBuff), BUFF_SIZE,
-                         bind(okCallback, &mutex, &writeDoneCond, _1, _2, _3),
-                         bind(errCallback, &mutex, &writeDoneCond,
-                              _1, _2, &errOccured)));
+
+  IOOkCallback *okCB = new IOOkCallback(bind(okCallback, &mutex,
+                                             &writeDoneCond, _1, _2, _3));
+  IOErrCallback *errCB =
+      new IOErrCallback(bind(errCallback, &mutex,
+                             &writeDoneCond, _1, _2, &errOccured));
+  IOCallback *ioCB = new IOCallback(okCB, errCB);
+  
+  ASSERT_EQ(0, aio_write(aioOutputFd, static_cast<void *>(aioBuff),
+                         BUFF_SIZE, OFFSET, ioCB));
   
   aio_cancel(aioOutputFd, NULL);
   close(aioOutputFd);

@@ -12,15 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LIBEVENTDISP_UTIL_H_
-#define LIBEVENTDISP_UTIL_H_
+#ifndef LIBEVENTDISP_UNIT_TASK_H_
+#define LIBEVENTDISP_UNIT_TASK_H_
 
-// Copied from http://google-styleguide.googlecode.com
-#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-  TypeName(const TypeName&);               \
-  void operator=(const TypeName&)
+#include <tr1/functional>
 
-template<typename T>
-void deleteObj(T *obj);
+namespace nyu_libeventdisp {
+typedef unsigned long TaskGroupID;
+
+struct UnitTask {
+  static const TaskGroupID DEFAULT_ID;
+  const TaskGroupID id;
+  std::tr1::function<void ()> task;
+
+  UnitTask(const std::tr1::function<void ()> &task);
+  UnitTask(const std::tr1::function<void ()> &task, TaskGroupID id);
+};
+}
 
 #endif
+

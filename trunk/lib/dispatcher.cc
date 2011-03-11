@@ -25,12 +25,8 @@ Dispatcher* Dispatcher::instance() {
   return instance_;
 }
 
-bool Dispatcher::enqueue(const UnitTask &newTask) {
-  return eventDispatcher_->enqueueTask(newTask, 0);
-}
-
-bool Dispatcher::enqueue(const UnitTask &newTask, const TaskGroupID &id) {
-  return eventDispatcher_->enqueueTask(newTask, id);
+bool Dispatcher::enqueue(UnitTask *newTask) {
+  return eventDispatcher_->enqueueTask(newTask);
 }
 
 }

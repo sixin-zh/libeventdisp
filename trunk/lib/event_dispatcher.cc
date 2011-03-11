@@ -5,54 +5,62 @@
 
 namespace nyu_libeventdisp {
 
+// Notes:
+// Always follow this precedence when acquiring locks to avoid deadlock:
+// queueMutex_ -> taskCountMutex_ -> stoppedMutex_
+
 using std::tr1::function;
 using std::tr1::bind;
 using base::ScopedLock;
 using base::makeThread;
 
 EventDispatcher::EventDispatcher(void) :
-    isExecuting(false), isStopped(false), isDying(false) {
+    isExecuting_(false), isStopped_(false), isDying_(false) {
   eventLoopThread_ = makeThread(bind(&EventDispatcher::eventLoop, this));
 }
 
 EventDispatcher::~EventDispatcher() {
   {
     ScopedLock sl(&stoppedMutex_);
-    isStopped = true;
-    isDying = true;
+    isStopped_ = true;
+    isDying_ = true;
   }
 
   // Wait for the eventLoop to cleanly dispose of pending tasks.
   pthread_join(eventLoopThread_, NULL);
 }
 
-bool EventDispatcher::enqueueTask(const UnitTask &newTask) {
-  ScopedLock sl(&queueMutex_);
+bool EventDispatcher::enqueueTask(UnitTask *newTask) {
+  ScopedLock scopedQueue(&queueMutex_);
 
   // It's okay to accept the new task if the stop method was called beyond this
   // point. So no need to acquire stoppedMutex_.
-  if (!isStopped) {
-    taskQueue_.push(new function<void ()>(newTask));
+  if (!isStopped_ && newTask != NULL) {
+    taskQueue_.push(newTask);
+
+    {
+      ScopedLock ScopedTaskCount(&taskCountMutex_);
+      taskCount_[newTask->id]++;
+    }
+    
     newTaskCond_.signal();
+  }
+  else if (newTask != NULL) {
+    delete newTask;
   }
   
   return true;
 }
 
-bool EventDispatcher::enqueueTask(const UnitTask &newTask,
-                                  const TaskGroupID &id) {
-  return enqueueTask(newTask);
-}
-
 void EventDispatcher::stop(void) {
   ScopedLock sl(&stoppedMutex_);
-  isStopped = true;
+  isStopped_ = true;
 }
 
 void EventDispatcher::resume(void) {
   ScopedLock sl(&stoppedMutex_);
-  if (!isDying) {
-    isStopped = false;
+  if (!isDying_) {
+    isStopped_ = false;
   }
 }
 
@@ -68,7 +76,7 @@ bool EventDispatcher::busy(void) {
 // 3. Remove the task from queue.
 // 4. Go back to #1.
 //
-// Invariant: isExecuting should be true between steps 1 and 4.
+// Invariant: isExecuting_ should be true between steps 1 and 4.
 void EventDispatcher::eventLoop(void) {
   static const long WAIT_TIMEOUT = 1; //sec
   
@@ -77,35 +85,47 @@ void EventDispatcher::eventLoop(void) {
     
     {
       ScopedLock sl(&queueMutex_);
-      while (taskQueue_.empty() && !isDying) {
+      while (taskQueue_.empty() && !isDying_) {
         // Use timed wait to break from waiting to allow destructor to proceed
         newTaskCond_.timedWait(&queueMutex_, WAIT_TIMEOUT);
       }
 
-      if (isDying && taskQueue_.empty()) {
+      if (isDying_ && taskQueue_.empty()) {
         return;
       }
 
       nextTask = taskQueue_.front();
-      isExecuting = true;
+      isExecuting_ = true;
     }
 
-    if (nextTask != NULL) {
-      if (!isDying) {
-        // Note: There is a chance that nextTask will call enqueueTask
-        (*nextTask)();
-      }
-
-      delete nextTask;
+    if (!isDying_) {
+      // Note: There is a chance that nextTask will call enqueueTask
+      nextTask->task();
     }
 
     {
       ScopedLock sl(&queueMutex_);
       taskQueue_.pop();
-      isExecuting = false;
+      isExecuting_ = false;
+
+      ScopedLock ScopedTaskCount(&taskCountMutex_);
+      taskCount_[nextTask->id]--;
     }
+
+    delete nextTask;
   }
 }
 
+size_t EventDispatcher::pendingTasks(void) const {
+  ScopedLock sl(&taskCountMutex_);
+  
+  size_t count = 0;
+  for (TaskCountMap::const_iterator iter = taskCount_.begin();
+       iter != taskCount_.end(); ++iter) {
+    count += iter->second;
+  }
+  
+  return count;
+}
 }
 

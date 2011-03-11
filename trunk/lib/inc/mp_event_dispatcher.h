@@ -26,10 +26,6 @@ namespace nyu_libeventdisp {
 // same TaskGroupID are guaranteed with sequential consistency.
 class MPEventDispatcher : public EventDispatcherInterface {
  public:
-  // Creates a new dispatcher that can have a maximum of 1 concurrently running
-  // task.
-  MPEventDispatcher(void);
-  
   // Creates a new dispatcher that can have a maximum of concurrently running
   // tasks specified by concurrentTaskCount.
   explicit MPEventDispatcher(size_t concurrentTaskCount);
@@ -37,20 +33,17 @@ class MPEventDispatcher : public EventDispatcherInterface {
   // Destroys this object. All remaining tasks in the queue are discarded.
   virtual ~MPEventDispatcher();
 
-  // Adds a new task to the event dispatcher. The task will be treated as having
-  // a TaskGroupID of 0.
+  // Adds a new task to the event dispatcher.
   //
   // Returns true if successful
-  bool enqueueTask(const UnitTask &newTask);
+  bool enqueueTask(UnitTask *newTask);
 
-  // Adds a new task with the given TaskGroupID.
-  //
-  // Returns true if successful
-  bool enqueueTask(const UnitTask &newTask, const TaskGroupID &id);
   void stop(void);
   void resume(void);
   
  private:
+  std::vector<EventDispatcherInterface*> dispatchers_;
+  
   DISALLOW_COPY_AND_ASSIGN(MPEventDispatcher);
 };
 }
