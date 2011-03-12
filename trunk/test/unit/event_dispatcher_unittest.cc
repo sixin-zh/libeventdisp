@@ -1,23 +1,13 @@
 #include "gtest/gtest.h"
 #include "event.h"
+#include "test_helper.h"
 
 #include <cstdlib>
 
 using nyu_libeventdisp::EventDispatcher;
 using nyu_libeventdisp::UnitTask;
+using nyu_libeventdisp_test::delayedInc;
 using std::tr1::bind;
-
-namespace {
-void delayedInc(EventDispatcher *dispatcher, size_t *val, int delay) {
-  if (--delay > 0) {
-    dispatcher->enqueueTask(new UnitTask(bind(delayedInc, dispatcher,
-                                              val, delay)));
-  }
-  else {
-    (*val)++;
-  }
-}
-} //namespace
 
 TEST(EventDispatcherTest, EventLoop) {
   EventDispatcher dispatcher;

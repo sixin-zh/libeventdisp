@@ -16,12 +16,16 @@
 #define LIBEVENTDISP_MP_EVENT_DISPATCHER_H_
 
 #include <tr1/functional>
+#include <tr1/unordered_map>
 #include <vector>
 
 #include "event_dispatcher_interface.h"
 #include "util.h"
+#include "lock.h"
 
 namespace nyu_libeventdisp {
+class EventDispatcher; // Forward declaration
+
 // A simple event dispatcher that can run tasks concurrently. Tasks with the
 // same TaskGroupID are guaranteed with sequential consistency.
 class MPEventDispatcher : public EventDispatcherInterface {
@@ -40,9 +44,24 @@ class MPEventDispatcher : public EventDispatcherInterface {
 
   void stop(void);
   void resume(void);
+
+  // Returns true if there are pending jobs. The correctness of this method
+  // assumes that enqueueTask will not be called externally while executing.
+  bool busy(void);
   
  private:
-  std::vector<EventDispatcherInterface*> dispatchers_;
+  typedef std::tr1::unordered_map<TaskGroupID, size_t> TaskIDTable;
+  // Assumption: the EventDispatcherInterface implementations are thread safe
+  std::vector<EventDispatcher*> dispatchers_;
+  // protected by taskTableMutex_
+  TaskIDTable taskIDTable_;
+
+  base::Mutex taskTableMutex_;
+  base::Mutex tokenMutex_;
+
+  const size_t concurrentTaskCount_;
+  // protected by tokenMutex_
+  size_t roundRobinToken_;
   
   DISALLOW_COPY_AND_ASSIGN(MPEventDispatcher);
 };

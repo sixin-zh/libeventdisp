@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LIBEVENTDISP_UTIL_H_
-#define LIBEVENTDISP_UTIL_H_
+#ifndef LIBEVENTDISP_TEST_HELPER_H_
+#define LIBEVENTDISP_TEST_HELPER_H_
 
-// Copied from http://google-styleguide.googlecode.com
-#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-  TypeName(const TypeName&);               \
-  void operator=(const TypeName&)
+#include <cstddef>
 
-template<typename T>
-void deleteObj(T *obj) {
-  if (obj != NULL) {
-    delete obj;
-  }
+namespace nyu_libeventdisp {
+class EventDispatcherInterface;
+}
+
+namespace nyu_libeventdisp_test {
+void delayedInc(nyu_libeventdisp::EventDispatcherInterface *dispatcher,
+                size_t *val, int delay);
 }
 
 #endif
+
