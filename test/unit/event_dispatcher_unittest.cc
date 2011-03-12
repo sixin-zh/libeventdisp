@@ -18,7 +18,7 @@ TEST(EventDispatcherTest, EventLoop) {
 
   for (size_t x = 0; x < MAX_ITER; x++) {
     EXPECT_TRUE(dispatcher.enqueueTask(new UnitTask(
-        bind(delayedInc, &dispatcher, &val, rand() % MAX_ITER))));
+        bind(delayedInc, &dispatcher, &val, rand() % MAX_ITER, 0))));
   }
 
   while (dispatcher.busy()) {

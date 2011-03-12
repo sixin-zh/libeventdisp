@@ -16,6 +16,7 @@
 #define LIBEVENTDISP_TEST_HELPER_H_
 
 #include <cstddef>
+#include "unit_task.h"
 
 namespace nyu_libeventdisp {
 class EventDispatcherInterface;
@@ -23,7 +24,7 @@ class EventDispatcherInterface;
 
 namespace nyu_libeventdisp_test {
 void delayedInc(nyu_libeventdisp::EventDispatcherInterface *dispatcher,
-                size_t *val, int delay);
+                size_t *val, int delay, nyu_libeventdisp::TaskGroupID id);
 }
 
 #endif
