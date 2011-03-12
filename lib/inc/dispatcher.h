@@ -21,6 +21,14 @@
 namespace nyu_libeventdisp {
 // Singleton class for the event dispatcher. The init method should be called
 // first before any operation.
+//
+// Sample usage:
+// void doThis(int x); // Some predefined function
+//
+// Dispatcher::init(); // or Dispatcher::init(N_CORES, true);
+// Dispatcher::enqueue(new UnitTask(std::tr1::bind(doThis, doThisArg)));
+// Dispatcher::enqueue(new UnitTask(std::tr1::bind(doThis, doThisArg), ID));
+
 class Dispatcher {
  public:
   // Initializes the singleton object.

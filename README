@@ -18,7 +18,13 @@ Running the unit tests.
 3. Type "make".
 4. Run "all_test" to run all test or choose an individual test to run.
 
-===============================================
+================================================================================
+Getting started:
+
+Please check the tests in test/unit directory to get a feel on how to use this 
+library. The comments in lib/inc/dispatcher.h also has a good overview.
+
+================================================================================
 Note:
 
 The library will be installed in the /usr/lib in the future on stable release, 
