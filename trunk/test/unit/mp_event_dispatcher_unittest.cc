@@ -25,7 +25,7 @@ TEST(MPEventDispatcherTest, EventLoop) {
   for (size_t x = 0; x < MAX_ITER; x++) {
     for (size_t y = 0; y < ID_TYPE_COUNT; y++) {
       EXPECT_TRUE(dispatcher.enqueueTask(new UnitTask(
-          bind(delayedInc, &dispatcher, &(val[y]), rand() % MAX_ITER))));
+          bind(delayedInc, &dispatcher, &(val[y]), rand() % MAX_ITER, y), y)));
     }
   }
 
