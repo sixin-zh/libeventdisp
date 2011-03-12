@@ -24,6 +24,13 @@ Getting started:
 Please check the tests in test/unit directory to get a feel on how to use this 
 library. The comments in lib/inc/dispatcher.h also has a good overview.
 
+Only the following header files are meant to be client facing:
+
+ - dispatcher.h
+ - aio_wrapper.h.
+
+So library users can just read the comments on these headers.
+
 ================================================================================
 Note:
 
