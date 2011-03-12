@@ -30,7 +30,8 @@ LINKERFLAGS = -lpthread -lrt
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = all_test event_dispatcher_unittest aio_wrapper_unittest
+TESTS = all_test event_dispatcher_unittest aio_wrapper_unittest \
+  mp_event_dispatcher_unittest
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -72,23 +73,35 @@ GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
 # gtest_main.a, depending on whether it defines its own main()
 # function.
 
+test_helper.o : $(USER_DIR)/test_helper.cc $(GTEST_HEADERS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
+
 event_dispatcher_unittest.o : $(USER_DIR)/event_dispatcher_unittest.cc \
                               $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
 
-aio_wrapper_unittest.o : $(USER_DIR)/aio_wrapper_unittest.cc \
-                              $(GTEST_HEADERS)
+mp_event_dispatcher_unittest.o : $(USER_DIR)/mp_event_dispatcher_unittest.cc \
+                                 $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
 
-event_dispatcher_unittest : event_dispatcher_unittest.o \
+aio_wrapper_unittest.o : $(USER_DIR)/aio_wrapper_unittest.cc \
+                         $(GTEST_HEADERS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
+
+event_dispatcher_unittest : event_dispatcher_unittest.o test_helper.o \
                             $(GTEST_DIR)/gtest_main.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
+
+mp_event_dispatcher_unittest : mp_event_dispatcher_unittest.o test_helper.o \
+                              $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
 
 aio_wrapper_unittest : custom_main.cc aio_wrapper_unittest.o \
-                            $(GTEST_DIR)/gtest_main.a
+                       $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
 
 all_test : custom_main.cc event_dispatcher_unittest.o aio_wrapper_unittest.o \
-                            $(GTEST_DIR)/gtest_main.a
+           mp_event_dispatcher_unittest.o test_helper.o \
+           $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
 

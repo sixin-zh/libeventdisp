@@ -48,6 +48,8 @@ TEST(AioWrapperTest, ReadTest) {
   ASSERT_GT(blockingInputFd, 0);
 
   char blockingBuff[BUFF_SIZE];
+  memset(blockingBuff, 0, BUFF_SIZE*sizeof(char));
+  
   ASSERT_GE(read(blockingInputFd, static_cast<void *>(blockingBuff),
                  BUFF_SIZE), 0);
   close(blockingInputFd);
@@ -56,6 +58,8 @@ TEST(AioWrapperTest, ReadTest) {
   ASSERT_GT(aioInputFd, 0);
 
   char aioBuff[BUFF_SIZE];
+  memset(aioBuff, 0, BUFF_SIZE*sizeof(char));
+  
   Mutex mutex;
   ConditionVar readDoneCond;
   IOOkCallback *okCB = new IOOkCallback(bind(okCallback, &mutex,
@@ -79,6 +83,8 @@ TEST(AioWrapperTest, ReadErrTest) {
   ASSERT_GT(aioInputFd, 0);
 
   char aioBuff[BUFF_SIZE];
+  memset(aioBuff, 0, BUFF_SIZE*sizeof(char));
+  
   Mutex mutex;
   ConditionVar readDoneCond;
   int errOccured = 0;
@@ -110,6 +116,8 @@ TEST(AioWrapperTest, WriteTest) {
   ASSERT_GT(aioOutputFd, 0);
 
   char aioBuff[BUFF_SIZE];
+  memset(aioBuff, 0, BUFF_SIZE*sizeof(char));
+  
   Mutex mutex;
   ConditionVar writeDoneCond;
   
@@ -129,6 +137,8 @@ TEST(AioWrapperTest, WriteTest) {
   close(aioOutputFd);
   int inputFd = open(WRITE_TEST_FILE, O_RDONLY);
   char inputBuff[BUFF_SIZE];
+  memset(inputBuff, 0, BUFF_SIZE*sizeof(char));
+  
   ASSERT_GE(read(inputFd, static_cast<void *>(inputBuff), BUFF_SIZE), 0);
   close(inputFd);
     
@@ -140,6 +150,8 @@ TEST(AioWrapperTest, WriteErrTest) {
   ASSERT_GT(aioOutputFd, 0);
 
   char aioBuff[BUFF_SIZE];
+  memset(aioBuff, 0, BUFF_SIZE*sizeof(char));
+  
   Mutex mutex;
   ConditionVar writeDoneCond;
   int errOccured = 0;
