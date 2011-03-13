@@ -1,0 +1,8 @@
+============================
+Webserver
+============================
+1. make all
+2. run the server: websvrd.o
+3. run the client: client1.o
+
+
