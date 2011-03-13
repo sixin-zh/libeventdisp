@@ -24,7 +24,8 @@ namespace nyu_libeventdisp {
 // integration with the event dispatcher. Dispatcher::init() should be called
 // first before calling any of the functions.
 
-typedef std::tr1::function<void (int, volatile void*, ssize_t)> IOOkCallback;
+//typedef std::tr1::function<void (int, volatile void*, ssize_t)> IOOkCallback;
+typedef std::tr1::function<void (int, void*, ssize_t)> IOOkCallback;
 typedef std::tr1::function<void (int, int)> IOErrCallback;
 
 // Container for storing callbacks

@@ -42,7 +42,8 @@ void checkIOProgress(aiocb *aioCB, IOCallback *callback) {
     ssize_t ioResult = aio_return(aioCB);
     
     if (status == 0 && ioResult > 0) {
-      (*callback->okCB)(aioCB->aio_fildes, aioCB->aio_buf, ioResult);
+      (*callback->okCB)(aioCB->aio_fildes, const_cast<void *>(aioCB->aio_buf),
+                        ioResult);
     }
     else if (callback->errCB != NULL) {
       (*callback->errCB)(aioCB->aio_fildes, status);
