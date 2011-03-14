@@ -112,7 +112,8 @@ TEST(AioWrapperTest, ReadErrTest) {
 }
 
 TEST(AioWrapperTest, WriteTest) {
-  int aioOutputFd = open(WRITE_TEST_FILE, O_RDWR | O_TRUNC | O_CREAT);
+  int aioOutputFd = open(WRITE_TEST_FILE, O_RDWR | O_TRUNC | O_CREAT,
+                         S_IRUSR | S_IWUSR);
   ASSERT_GT(aioOutputFd, 0);
 
   char aioBuff[BUFF_SIZE];
@@ -146,7 +147,8 @@ TEST(AioWrapperTest, WriteTest) {
 }
 
 TEST(AioWrapperTest, WriteErrTest) {
-  int aioOutputFd = open(WRITE_TEST_FILE, O_RDWR | O_TRUNC | O_CREAT);
+  int aioOutputFd = open(WRITE_TEST_FILE, O_RDWR | O_TRUNC | O_CREAT,
+                         S_IRUSR | S_IWUSR);
   ASSERT_GT(aioOutputFd, 0);
 
   char aioBuff[BUFF_SIZE];
