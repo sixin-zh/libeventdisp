@@ -27,8 +27,9 @@ sample directory also contains some simple code samples.
 
 Only the following header files are meant to be client facing:
 
+ - unit_task.h
  - dispatcher.h
- - aio_wrapper.h.
+ - aio_wrapper.h
 
 So library users can just read the comments on these headers.
 
