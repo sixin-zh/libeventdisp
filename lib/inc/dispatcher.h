@@ -56,12 +56,6 @@ class Dispatcher {
   // Returns true if successful
   bool enqueue(UnitTask *newTask);
 
-  // Enqueues a new task to the queue with the given id. id is ignored when not
-  // in multiprocessor mode.
-  //
-  // Returns true if successful
-  bool enqueue(const UnitTask &newTask, const TaskGroupID &id);
-  
  private:
   static Dispatcher *instance_;
   EventDispatcherInterface *eventDispatcher_;
