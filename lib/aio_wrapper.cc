@@ -38,7 +38,7 @@ void checkIOProgress(aiocb *aioCB, IOCallback *callback) {
     Dispatcher::instance()->enqueue(new UnitTask(
         bind(checkIOProgress, aioCB, callback)));
   }
-  else {
+  else if (callback != NULL) {
     ssize_t ioResult = aio_return(aioCB);
     
     if (status == 0 && ioResult > 0) {
@@ -90,7 +90,10 @@ int aio_read(int fd, void *buff, size_t len, off_t offset,
     checkIOProgress(aioCB, callback);
   }
   else {
-    delete callback;
+    if (callback != NULL) {
+      delete callback;
+    }
+    
     delete aioCB;
   }
 
@@ -113,7 +116,10 @@ int aio_write(int fd, void *buff, size_t len, off_t offset,
     checkIOProgress(aioCB, callback);
   }
   else {
-    delete callback;
+    if (callback != NULL) {
+      delete callback;
+    }
+
     delete aioCB;
   }
 
