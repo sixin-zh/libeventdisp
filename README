@@ -22,7 +22,8 @@ Running the unit tests.
 Getting started:
 
 Please check the tests in test/unit directory to get a feel on how to use this 
-library. The comments in lib/inc/dispatcher.h also has a good overview.
+library. The comments in lib/inc/dispatcher.h also has a good overview. The 
+sample directory also contains some simple code samples.
 
 Only the following header files are meant to be client facing:
 
