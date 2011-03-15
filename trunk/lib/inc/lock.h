@@ -110,6 +110,42 @@ private:
 
 };
 
+// A semaphore implementation that allows a negative intial value.
+class Semaphore {
+ public:
+  Semaphore(int initVal) : val_(initVal) {
+  }
+
+  // Increments the semaphore value.
+  // Warning: Can overflow if current value is max value for int
+  void up(void) {
+    ScopedLock sl(&mutex_);
+    val_++;
+
+    if (val_ > 0) {
+      cond_.signal();
+    }
+  }
+
+  // Tries to decrement the semaphore value but blocks until the value
+  // becomes > 0.
+  // Warning: Can overflow if current value is min value for int
+  void down(void) {
+    ScopedLock sl(&mutex_);
+    
+    while (val_ <= 0) {
+      cond_.wait(&mutex_);
+    }
+
+    val_--;
+  }
+  
+ private:
+  int val_;
+  Mutex mutex_;
+  ConditionVar cond_;
+};
+
 } // namespace base
 
 #endif  // MCP_BASE_LOCK_HEADER

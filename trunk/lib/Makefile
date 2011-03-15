@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -O2 -fPIC -lpthread -ltr -Iinc
+CXXFLAGS = -Wall -Wextra -O2 -fPIC -lpthread -ltr -Iinc
 
 OBJ = event_dispatcher.o mp_event_dispatcher.o thread.o dispatcher.o aio_wrapper.o \
   unit_task.o

@@ -1,16 +1,15 @@
 CXX = g++
-CPPFLAGS += -g -Wall -Wextra -I../lib/inc
-CXXFLAGS += -L../build -lpthread -leventdisp -lrt
+CPPFLAGS += -g -Wall -Wextra -I../../lib/inc
+CXXFLAGS += -L../../build -lpthread -leventdisp -lrt
 
-TARGET = copy
-OBJ = copy.o
+TARGET = conv
 
 all: $(TARGET)
 
 %.o: %.cc %.h
 	@$(CXX) $(CPPFLAGS) -c -o $@ $<
 
-copy: copy.cc $(OBJ)
+conv: conv.cc $(OBJ)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $<
 
 .phony: clean

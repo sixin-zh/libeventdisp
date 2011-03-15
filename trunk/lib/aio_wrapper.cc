@@ -17,12 +17,6 @@ using nyu_libeventdisp::UnitTask;
 // Default offset for read & write
 const off_t DEFAULT_OFFSET = 0;
 
-// Serves as a dummy callback that does nothing and conforms with the signature
-// for IOErrCallback.
-void dummyErrorCallback(int fd, int errorCode) {
-  // Do nothing
-}
-
 // Checks the progress of the queued asynchronous I/O job and calls callback
 // upon successful completion or errorCallback upon failure.
 //
