@@ -54,7 +54,7 @@ void aioDone(sigval_t signal) {
       Dispatcher::instance()->enqueue(
           new UnitTask(bind(*callback->okCB, aioCB->aio_fildes,
                             const_cast<void *>(aioCB->aio_buf),
-                            ioResult), callback->id));
+                            ioResult, errno), callback->id));
     }
   }
   else if (callback != NULL && callback->errCB != NULL) {
@@ -90,7 +90,7 @@ void checkIOProgress(aiocb *aioCB, IOCallback *callback) {
           Dispatcher::instance()->enqueue(
               new UnitTask(bind(*callback->okCB, aioCB->aio_fildes,
                                 const_cast<void *>(aioCB->aio_buf),
-                                ioResult), callback->id));
+                                ioResult, errno), callback->id));
         }
       }
       else if (callback->errCB != NULL) {
