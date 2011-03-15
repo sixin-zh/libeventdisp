@@ -24,7 +24,7 @@ namespace nyu_libeventdisp {
 // integration with the event dispatcher. Dispatcher::init() should be called
 // first before calling any of the functions.
 
-typedef std::tr1::function<void (int, void*, ssize_t, int)> IOOkCallback;
+typedef std::tr1::function<void (int, void*, ssize_t)> IOOkCallback;
 typedef std::tr1::function<void (int, int)> IOErrCallback;
 
 // Container for storing callbacks
@@ -62,15 +62,11 @@ struct IOCallback {
 //    Params for okCB:
 //      1st arg - contains the file descriptor passed to this function.
 //      2nd arg - contains the data read.
-//      3rd arg - the number of bytes read. Contains a value of -1 if the read
-//        operation failed.
-//      4th arg - Contains the error code. Corresponds to the errno after
-//        performing a system call on read. Please refer to the man page of read
-//        for more details. Valid only if 3rd arg is -1.
+//      3rd arg - the number of bytes read.
 //    Params for errCB (can be NULL):
 //      1st arg - contains the file descriptor passed to this function.
-//      2nd arg - contains the error code. Please refer to aio_error for more
-//        details
+//      2nd arg - contains the error code. Please refer to the man page for
+//        aio_error for more details
 //
 // Returns 0 if read operation is successfully queued. Returns -1 otherwise and
 // the errno variable will be set appropriately.
@@ -91,15 +87,11 @@ int aio_read(int fd, void *buff, size_t len, off_t offset,
 //    Params for okCB:
 //      1st arg - contains the file descriptor passed to this function.
 //      2nd arg - contains the data used to write.
-//      3rd arg - the number of bytes written. Contains a value of -1 if the read
-//        operation failed.
-//      4th arg - Contains the error code. Corresponds to the errno after
-//        performing a system call on read. Please refer to the man page of read
-//        for more details. Valid only if 3rd arg is -1.
+//      3rd arg - the number of bytes written.
 //    Params for errCB (if not NULL):
 //      1st arg - contains the file descriptor passed to this function.
-//      2nd arg - contains the error code. Please refer to aio_error for more
-//        details.
+//      2nd arg - contains the error code. Please refer to the man page for
+//        aio_error for more details
 //
 // Returns 0 if write operation is successfully queued. Returns -1 otherwise and
 // the errno variable will be set appropriately.

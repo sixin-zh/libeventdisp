@@ -28,19 +28,17 @@ const size_t BUFF_SIZE = 1024;
 const off_t OFFSET = 0;
 const long IO_TIMEOUT = 1; //sec
 
-void okCallback(Mutex *mutex, ConditionVar *cond, int fd, void *buff,
-                ssize_t len, int errCode) {
+void okCallback(Mutex *mutex, ConditionVar *cond, int fd, void *buff, 
+                ssize_t len) {
   ScopedLock sl(mutex);
   cond->signal();
 }
 
-void errCallback(Mutex *mutex, ConditionVar *cond, int fd, int err,
-                 int *errOccured) {
+void errCallback(Mutex *mutex, ConditionVar *cond, int fd, int *errOccured) {
   ScopedLock sl(mutex);
   *errOccured = 1;
   cond->signal();
 }
-
 } //namespace
 
 TEST(AioWrapperTest, ReadTest) {
@@ -63,7 +61,7 @@ TEST(AioWrapperTest, ReadTest) {
   Mutex mutex;
   ConditionVar readDoneCond;
   IOOkCallback *okCB = new IOOkCallback(bind(okCallback, &mutex,
-                                             &readDoneCond, _1, _2, _3, _4));
+                                             &readDoneCond, _1, _2, _3));
   IOCallback *ioCB = new IOCallback(okCB, NULL);
   
   ASSERT_EQ(0, aio_read(aioInputFd, static_cast<void *>(aioBuff),
@@ -90,10 +88,10 @@ TEST(AioWrapperTest, ReadErrTest) {
   int errOccured = 0;
   
   IOOkCallback *okCB = new IOOkCallback(bind(okCallback, &mutex,
-                                             &readDoneCond, _1, _2, _3, _4));
+                                             &readDoneCond, _1, _2, _3));
   IOErrCallback *errCB =
       new IOErrCallback(bind(errCallback, &mutex,
-                             &readDoneCond, _1, _2, &errOccured));
+                             &readDoneCond, _1, &errOccured));
   IOCallback *ioCB = new IOCallback(okCB, errCB);
   
   ASSERT_EQ(0, aio_read(aioInputFd, static_cast<void *>(aioBuff),
@@ -124,7 +122,7 @@ TEST(AioWrapperTest, WriteTest) {
   
   strcpy(aioBuff, WRITE_TEST_BUFF);
   IOOkCallback *okCB = new IOOkCallback(bind(okCallback, &mutex,
-                                             &writeDoneCond, _1, _2, _3, _4));
+                                             &writeDoneCond, _1, _2, _3));
   IOCallback *ioCB = new IOCallback(okCB, NULL);
   
   ASSERT_EQ(0, aio_write(aioOutputFd, static_cast<void *>(aioBuff),
@@ -161,10 +159,10 @@ TEST(AioWrapperTest, WriteErrTest) {
   strcpy(aioBuff, WRITE_TEST_BUFF);
 
   IOOkCallback *okCB = new IOOkCallback(bind(okCallback, &mutex,
-                                             &writeDoneCond, _1, _2, _3, _4));
+                                             &writeDoneCond, _1, _2, _3));
   IOErrCallback *errCB =
       new IOErrCallback(bind(errCallback, &mutex,
-                             &writeDoneCond, _1, _2, &errOccured));
+                             &writeDoneCond, _1, &errOccured));
   IOCallback *ioCB = new IOCallback(okCB, errCB);
   
   ASSERT_EQ(0, aio_write(aioOutputFd, static_cast<void *>(aioBuff),
