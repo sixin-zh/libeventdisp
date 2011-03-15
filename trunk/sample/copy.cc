@@ -23,37 +23,29 @@ void errOccured(int fd, int err) {
   exit(0);
 }
 
-void copyDone(int fd, void* contents, ssize_t len, int errCode) {
-  if (len >= 0) {
-    char *data = new char[len];
-    memset(data, 0, len);
+void copyDone(int fd, void* contents, ssize_t len) {
+  assert (len >= 0);
+  char *data = new char[len];
+  memset(data, 0, len);
 
-    strncpy(data, reinterpret_cast<char *>(contents), static_cast<size_t>(len));
-    cout << "Successfully written: " << data << endl;
+  strncpy(data, reinterpret_cast<char *>(contents), static_cast<size_t>(len));
+  cout << "Successfully written: " << data << endl;
 
-    delete[] static_cast<char *>(contents);
-    delete[] data;
-  }
-  else {
-    errOccured(fd, errCode);
-  }
+  delete[] static_cast<char *>(contents);
+  delete[] data;
   
   close(fd);
   exit(0);
 }
 
-void copyTo(int destFd, int srcFd, void* contents, ssize_t len, int errCode) {
-  if (len >= 0) {
-    IOOkCallback *writeOkCB = new IOOkCallback(copyDone);
-    IOErrCallback *errCB = new IOErrCallback(errOccured);
-    IOCallback *ioCB = new IOCallback(writeOkCB, errCB);
+void copyTo(int destFd, int srcFd, void* contents, ssize_t len) {
+  assert (len >= 0);
+  IOOkCallback *writeOkCB = new IOOkCallback(copyDone);
+  IOErrCallback *errCB = new IOErrCallback(errOccured);
+  IOCallback *ioCB = new IOCallback(writeOkCB, errCB);
 
-    int ret = aio_write(destFd, contents, len, 0, ioCB);
-    assert(ret == 0);
-  }
-  else {
-    errOccured(srcFd, errCode);
-  }
+  int ret = aio_write(destFd, contents, len, 0, ioCB);
+  assert(ret == 0);
   
   close(srcFd);
 }
@@ -77,7 +69,7 @@ int main(int argc, char **argv) {
   assert(destFd > 0);
 
   // Create the callback objects
-  IOOkCallback *readOkCB = new IOOkCallback(bind(copyTo, destFd, _1, _2, _3, _4));
+  IOOkCallback *readOkCB = new IOOkCallback(bind(copyTo, destFd, _1, _2, _3));
   IOErrCallback *errCB = new IOErrCallback(errOccured);
   IOCallback *ioCB = new IOCallback(readOkCB, errCB);
 
