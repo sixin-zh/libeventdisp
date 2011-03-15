@@ -53,6 +53,9 @@ class Dispatcher {
   // Enqueues a new task to the queue. Ownership of newTask is passed to this
   // object.
   //
+  // Failure cases:
+  // 1. When the destructor for this object has already been called.
+  //
   // Returns true if successful
   bool enqueue(UnitTask *newTask);
 
