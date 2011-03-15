@@ -20,7 +20,7 @@
 
 #define DEBUG_SVR_
 #include <assert.h>
-
+#include <errno.h>	
 
 #define BIND std::tr1::bind
 
@@ -37,7 +37,7 @@ void err_sys(const char *str) {
 //#include <sys/time.h>
 //#include <time.h>
 //#include <unistd.h>
-//#include <errno.h>	
+
 //#include <sys/wait.h>
 
 

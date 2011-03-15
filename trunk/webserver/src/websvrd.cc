@@ -37,6 +37,11 @@ int main(int argc, char **argv) {
   while (true) {
     // accept the connection
     int connfd = accept(listenfd, (SA *) NULL, NULL);
+    if (connfd < 0) {
+      printf("error code: %d\n", errno);
+      continue;
+    }
+
     printf("[ok] client socket accetped: %d. \n", connfd);
     
     // parse the request
