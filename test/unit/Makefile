@@ -43,7 +43,7 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 all : $(TESTS)
 
 clean :
-	rm -f $(TESTS) *.o
+	rm -f $(TESTS) *.o write_test
 
 # Builds gtest.a and gtest_main.a.
 

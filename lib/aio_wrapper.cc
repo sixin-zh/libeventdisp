@@ -6,7 +6,7 @@
 #include <cstring>
 #include <cerrno>
 
-//#define LIBEVENT_USE_SIG 1
+define LIBEVENT_USE_SIG 1
 
 using nyu_libeventdisp::Dispatcher;
 using std::tr1::bind;
@@ -19,7 +19,7 @@ using nyu_libeventdisp::UnitTask;
 // Default offset for read & write
 const off_t DEFAULT_OFFSET = 0;
 
-// Container for holding IOCallback and aiocb pointers.
+// Convenience container for holding IOCallback and aiocb pointers.
 struct AIOSigHandlerInfo {
   IOCallback* const callback;
   aiocb* const aioCB;
@@ -51,12 +51,16 @@ void aioDone(sigval_t signal) {
     if (callback != NULL && callback->okCB != NULL) {
       ssize_t ioResult = aio_return(aioCB);
     
-      (*callback->okCB)(aioCB->aio_fildes, const_cast<void *>(aioCB->aio_buf),
-                        ioResult);
+      Dispatcher::instance()->enqueue(
+          new UnitTask(bind(*callback->okCB, aioCB->aio_fildes,
+                            const_cast<void *>(aioCB->aio_buf),
+                            ioResult), callback->id));
     }
   }
   else if (callback != NULL && callback->errCB != NULL) {
-    (*callback->errCB)(aioCB->aio_fildes, status);
+    Dispatcher::instance()->enqueue(
+        new UnitTask(bind(*callback->errCB, aioCB->aio_fildes,
+                          status), callback->id));
   }
 
   delete origInfo;
@@ -75,20 +79,29 @@ void checkIOProgress(aiocb *aioCB, IOCallback *callback) {
   
   if (status == EINPROGRESS) {
     Dispatcher::instance()->enqueue(new UnitTask(
-        bind(checkIOProgress, aioCB, callback)));
+        bind(checkIOProgress, aioCB, callback), callback->id));
   }
-  else if (callback != NULL) {
-    ssize_t ioResult = aio_return(aioCB);
+  else {
+    if (callback != NULL) {
+      ssize_t ioResult = aio_return(aioCB);
     
-    if (status == 0 && ioResult > 0) {
-      (*callback->okCB)(aioCB->aio_fildes, const_cast<void *>(aioCB->aio_buf),
-                        ioResult);
-    }
-    else if (callback->errCB != NULL) {
-      (*callback->errCB)(aioCB->aio_fildes, status);
-    }
+      if (status == 0 && ioResult > 0) {
+        if (callback->okCB != NULL) {
+          Dispatcher::instance()->enqueue(
+              new UnitTask(bind(*callback->okCB, aioCB->aio_fildes,
+                                const_cast<void *>(aioCB->aio_buf),
+                                ioResult), callback->id));
+        }
+      }
+      else if (callback->errCB != NULL) {
+        Dispatcher::instance()->enqueue(
+            new UnitTask(bind(*callback->errCB, aioCB->aio_fildes,
+                              status), callback->id));
+      }
 
-    delete callback;
+      delete callback;
+    }
+    
     delete aioCB;
   }
 }
