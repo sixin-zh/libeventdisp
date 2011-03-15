@@ -9,8 +9,8 @@ SVRD_BIN_DIR = .
 LIBEVENTDISP_INC_DIR = ../lib/inc
 LIBEVENTDISP_BIN_DIR = ../build
 
-INCFLAGS += -I$(SVRD_INC_DIR) -I$(LIBEVENTDISP_INC_DIR) -lpthread -lrt
-LIBFLAGS += -L$(LIBEVENTDISP_BIN_DIR) -leventdisp
+INCFLAGS += -I$(SVRD_INC_DIR) -I$(LIBEVENTDISP_INC_DIR)
+LIBFLAGS += -L$(LIBEVENTDISP_BIN_DIR) -leventdisp -lpthread -lrt
 CXFLAGS  += -g -Wall -Wextra
 
 

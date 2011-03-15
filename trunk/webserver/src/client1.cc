@@ -1,40 +1,38 @@
 #include <websvrd.h>
 
 int main() {
-
-  register int svr_fd;
+  
+  // Init socket, address
+  int svr_fd; // register
   struct sockaddr_in svr_sa;
 
-
   if ((svr_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-    err_std("[client] socket error\n");
+    err_std("[fail] client init.\n");
     return -1;
   }
 
   bzero(&svr_sa, sizeof svr_sa);
-
-  svr_sa.sin_family = AF_INET;
-  svr_sa.sin_port = SVR_PORT;
+  svr_sa.sin_family      = AF_INET;
+  svr_sa.sin_port        = SVR_PORT;
   svr_sa.sin_addr.s_addr = SVR_IPV4;
 
-
+  // Connect to server
   if (connect(svr_fd, (SA *) &svr_sa, sizeof svr_sa) < 0) {
-    err_std("[client] connect error\n");
+    err_std("[fail] connect to server.\n");
     close(svr_fd);
     return -2;
   }
   
-  FILE *svr_io;
-  if ((svr_io = fdopen(svr_fd, "wb")) == NULL) {
-    err_std("\t[client] open server failed.\n");
-    close(svr_fd);
-    return -3;
-  }
+  // Simple HTTP request
+  const char reqstr[] = "GET / HTTP/1.1\n";
+  // printf("%s: %lu\n", reqstr, sizeof reqstr);
 
-  fprintf(svr_io, "HTTP/1.1 200 OK\n");
-
+  write(svr_fd, reqstr, strlen(reqstr)+1);
   
-  fclose(svr_io);
+  char replybuff[1024];
+  read(svr_fd, replybuff, 1024);
+  printf("[server reply]\n%s\n[the end]\n", replybuff);
+
   close(svr_fd);
 
   return 0;
