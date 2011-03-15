@@ -37,6 +37,10 @@ class EventDispatcher : public EventDispatcherInterface {
   // Mutex usage: stoppedMutex_
   virtual ~EventDispatcher();
 
+  // Failure cases:
+  // 1. When the dispatcher is currently stopped.
+  // 2. When the destructor for this object has already been called.
+  //
   // Mutex usage: queueMutex_
   bool enqueueTask(UnitTask *newTask);
 
