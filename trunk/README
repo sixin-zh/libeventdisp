@@ -30,6 +30,7 @@ Only the following header files are meant to be client facing:
  - unit_task.h
  - dispatcher.h
  - aio_wrapper.h
+ - delayed_task.h
 
 So library users can just read the comments on these headers.
 
