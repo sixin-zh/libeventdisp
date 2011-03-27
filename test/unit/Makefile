@@ -31,7 +31,7 @@ LINKERFLAGS = -lpthread -lrt
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
 TESTS = all_test event_dispatcher_unittest aio_wrapper_unittest \
-  mp_event_dispatcher_unittest
+  mp_event_dispatcher_unittest delayed_task_unittest
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -100,8 +100,12 @@ aio_wrapper_unittest : custom_main.cc aio_wrapper_unittest.o \
                        $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
 
+delayed_task_unittest : custom_main.cc delayed_task_unittest.o \
+                       $(GTEST_DIR)/gtest_main.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
+
 all_test : custom_main.cc event_dispatcher_unittest.o aio_wrapper_unittest.o \
            mp_event_dispatcher_unittest.o test_helper.o \
-           $(GTEST_DIR)/gtest_main.a
+           delayed_task_unittest.o $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
 

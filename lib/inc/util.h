@@ -15,6 +15,8 @@
 #ifndef LIBEVENTDISP_UTIL_H_
 #define LIBEVENTDISP_UTIL_H_
 
+#include <cstddef>
+
 // Copied from http://google-styleguide.googlecode.com
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
   TypeName(const TypeName&);               \

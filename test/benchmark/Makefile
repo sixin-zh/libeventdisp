@@ -12,6 +12,9 @@ all: $(TARGET)
 conv: conv.cc $(OBJ)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $<
 
-.phony: clean
+.phony: clean perf
 clean:
 	@rm $(TARGET) $(OBJ)
+
+perf: CXXFLAGS += -lprofiler
+perf: conv

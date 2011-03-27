@@ -2,7 +2,7 @@ CXX = g++
 CXXFLAGS = -Wall -Wextra -O2 -fPIC -lpthread -ltr -Iinc
 
 OBJ = event_dispatcher.o mp_event_dispatcher.o thread.o dispatcher.o aio_wrapper.o \
-  unit_task.o
+  unit_task.o delayed_task.o
 TARGET = libeventdisp.so
 
 $(TARGET): $(OBJ)
