@@ -41,10 +41,9 @@
 // scripts/fuse_gtest.py depends on gtest's own header being #included
 // *unconditionally*.  Therefore these #includes cannot be moved
 // inside #if GTEST_HAS_PARAM_TEST.
-#include "gtest/internal/gtest-internal.h"
-#include "gtest/internal/gtest-linked_ptr.h"
-#include "gtest/internal/gtest-port.h"
-#include "gtest/gtest-printers.h"
+#include <gtest/internal/gtest-internal.h>
+#include <gtest/internal/gtest-linked_ptr.h>
+#include <gtest/internal/gtest-port.h>
 
 #if GTEST_HAS_PARAM_TEST
 
@@ -172,7 +171,7 @@ class ParamGenerator {
   iterator end() const { return iterator(impl_->End()); }
 
  private:
-  linked_ptr<const ParamGeneratorInterface<T> > impl_;
+  ::testing::internal::linked_ptr<const ParamGeneratorInterface<T> > impl_;
 };
 
 // Generates values from a range of two comparable values. Can be used to
@@ -286,7 +285,7 @@ class ValuesInIteratorRangeGenerator : public ParamGeneratorInterface<T> {
    public:
     Iterator(const ParamGeneratorInterface<T>* base,
              typename ContainerType::const_iterator iterator)
-        : base_(base), iterator_(iterator) {}
+        :  base_(base), iterator_(iterator) {}
     virtual ~Iterator() {}
 
     virtual const ParamGeneratorInterface<T>* BaseGenerator() const {
@@ -505,11 +504,12 @@ class ParameterizedTestCaseInfo : public ParameterizedTestCaseInfoBase {
              param_it != generator.end(); ++param_it, ++i) {
           Message test_name_stream;
           test_name_stream << test_info->test_base_name.c_str() << "/" << i;
-          MakeAndRegisterTestInfo(
+          ::testing::internal::MakeAndRegisterTestInfo(
               test_case_name_stream.GetString().c_str(),
               test_name_stream.GetString().c_str(),
-              NULL,  // No type parameter.
-              PrintToString(*param_it).c_str(),
+              "",  // test_case_comment
+              "",  // comment; TODO(vladl@google.com): provide parameter value
+                   //                                  representation.
               GetTestCaseTypeId(),
               TestCase::SetUpTestCase,
               TestCase::TearDownTestCase,
