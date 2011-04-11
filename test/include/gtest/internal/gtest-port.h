@@ -50,8 +50,6 @@
 //   GTEST_HAS_GLOBAL_WSTRING - Define it to 1/0 to indicate that ::string
 //                              is/isn't available (some systems define
 //                              ::wstring, which is different to std::wstring).
-//   GTEST_HAS_POSIX_RE       - Define it to 1/0 to indicate that POSIX regular
-//                              expressions are/aren't available.
 //   GTEST_HAS_PTHREAD        - Define it to 1/0 to indicate that <pthread.h>
 //                              is/isn't available.
 //   GTEST_HAS_RTTI           - Define it to 1/0 to indicate that RTTI is/isn't
@@ -64,10 +62,6 @@
 //   GTEST_HAS_SEH            - Define it to 1/0 to indicate whether the
 //                              compiler supports Microsoft's "Structured
 //                              Exception Handling".
-//   GTEST_HAS_STREAM_REDIRECTION
-//                            - Define it to 1/0 to indicate whether the
-//                              platform supports I/O stream redirection using
-//                              dup() and dup2().
 //   GTEST_USE_OWN_TR1_TUPLE  - Define it to 1/0 to indicate whether Google
 //                              Test's own tr1 tuple implementation should be
 //                              used.  Unused when the user sets
@@ -88,7 +82,6 @@
 //   GTEST_OS_CYGWIN   - Cygwin
 //   GTEST_OS_LINUX    - Linux
 //   GTEST_OS_MAC      - Mac OS X
-//   GTEST_OS_NACL     - Google Native Client (NaCl)
 //   GTEST_OS_SOLARIS  - Sun Solaris
 //   GTEST_OS_SYMBIAN  - Symbian
 //   GTEST_OS_WINDOWS  - Windows (Desktop, MinGW, or Mobile)
@@ -114,9 +107,7 @@
 //   GTEST_HAS_PARAM_TEST   - value-parameterized tests
 //   GTEST_HAS_TYPED_TEST   - typed tests
 //   GTEST_HAS_TYPED_TEST_P - type-parameterized tests
-//   GTEST_USES_POSIX_RE    - enhanced POSIX regex is used. Do not confuse with
-//                            GTEST_HAS_POSIX_RE (see above) which users can
-//                            define themselves.
+//   GTEST_USES_POSIX_RE    - enhanced POSIX regex is used.
 //   GTEST_USES_SIMPLE_RE   - our own simple regex is used;
 //                            the above two are mutually exclusive.
 //   GTEST_CAN_COMPARE_NULL - accepts untyped NULL in EXPECT_EQ().
@@ -144,9 +135,8 @@
 //
 // Regular expressions:
 //   RE             - a simple regular expression class using the POSIX
-//                    Extended Regular Expression syntax on UNIX-like
-//                    platforms, or a reduced regular exception syntax on
-//                    other platforms, including Windows.
+//                    Extended Regular Expression syntax.  Not available on
+//                    Windows.
 //
 // Logging:
 //   GTEST_LOG_()   - logs messages at the specified severity level.
@@ -179,13 +169,11 @@
 //   Int32FromGTestEnv()  - parses an Int32 environment variable.
 //   StringFromGTestEnv() - parses a string environment variable.
 
-#include <ctype.h>   // for isspace, etc
-#include <stddef.h>  // for ptrdiff_t
+#include <stddef.h>  // For ptrdiff_t
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #ifndef _WIN32_WCE
-#include <sys/types.h>
 #include <sys/stat.h>
 #endif  // !_WIN32_WCE
 
@@ -231,45 +219,29 @@
 #define GTEST_OS_SOLARIS 1
 #elif defined(_AIX)
 #define GTEST_OS_AIX 1
-#elif defined __native_client__
-#define GTEST_OS_NACL 1
 #endif  // __CYGWIN__
 
-// Brings in definitions for functions used in the testing::internal::posix
-// namespace (read, write, close, chdir, isatty, stat). We do not currently
-// use them on Windows Mobile.
-#if !GTEST_OS_WINDOWS
-// This assumes that non-Windows OSes provide unistd.h. For OSes where this
-// is not the case, we need to include headers that provide the functions
-// mentioned above.
-#include <unistd.h>
-#if !GTEST_OS_NACL
-// TODO(vladl@google.com): Remove this condition when Native Client SDK adds
-// strings.h (tracked in
-// http://code.google.com/p/nativeclient/issues/detail?id=1175).
-#include <strings.h>  // Native Client doesn't provide strings.h.
-#endif
-#elif !GTEST_OS_WINDOWS_MOBILE
-#include <direct.h>
-#include <io.h>
-#endif
-
-// Defines this to true iff Google Test can use POSIX regular expressions.
-#ifndef GTEST_HAS_POSIX_RE
-#define GTEST_HAS_POSIX_RE (!GTEST_OS_WINDOWS)
-#endif
-
-#if GTEST_HAS_POSIX_RE
+#if GTEST_OS_CYGWIN || GTEST_OS_LINUX || GTEST_OS_MAC || GTEST_OS_SYMBIAN || \
+    GTEST_OS_SOLARIS || GTEST_OS_AIX
 
 // On some platforms, <regex.h> needs someone to define size_t, and
 // won't compile otherwise.  We can #include it here as we already
 // included <stdlib.h>, which is guaranteed to define size_t through
 // <stddef.h>.
 #include <regex.h>  // NOLINT
+#include <strings.h>  // NOLINT
+#include <sys/types.h>  // NOLINT
+#include <time.h>  // NOLINT
+#include <unistd.h>  // NOLINT
 
 #define GTEST_USES_POSIX_RE 1
 
 #elif GTEST_OS_WINDOWS
+
+#if !GTEST_OS_WINDOWS_MOBILE
+#include <direct.h>  // NOLINT
+#include <io.h>  // NOLINT
+#endif
 
 // <regex.h> is not available on Windows.  Use our own simple regex
 // implementation instead.
@@ -281,7 +253,8 @@
 // simple regex implementation instead.
 #define GTEST_USES_SIMPLE_RE 1
 
-#endif  // GTEST_HAS_POSIX_RE
+#endif  // GTEST_OS_CYGWIN || GTEST_OS_LINUX || GTEST_OS_MAC ||
+        // GTEST_OS_SYMBIAN || GTEST_OS_SOLARIS || GTEST_OS_AIX
 
 #ifndef GTEST_HAS_EXCEPTIONS
 // The user didn't tell us whether exceptions are enabled, so we need
@@ -335,7 +308,8 @@
 // TODO(wan@google.com): uses autoconf to detect whether ::std::wstring
 //   is available.
 
-// Cygwin 1.7 and below doesn't support ::std::wstring.
+// Cygwin 1.5 and below doesn't support ::std::wstring.
+// Cygwin 1.7 might add wstring support; this should be updated when clear.
 // Solaris' libc++ doesn't support it either.
 #define GTEST_HAS_STD_WSTRING (!(GTEST_OS_CYGWIN || GTEST_OS_SOLARIS))
 
@@ -405,15 +379,6 @@
 #define GTEST_HAS_PTHREAD (GTEST_OS_LINUX || GTEST_OS_MAC)
 #endif  // GTEST_HAS_PTHREAD
 
-#if GTEST_HAS_PTHREAD
-// gtest-port.h guarantees to #include <pthread.h> when GTEST_HAS_PTHREAD is
-// true.
-#include <pthread.h>  // NOLINT
-
-// For timespec and nanosleep, used below.
-#include <time.h>  // NOLINT
-#endif
-
 // Determines whether Google Test can use tr1/tuple.  You can define
 // this macro to 0 to prevent Google Test from using tuple (any
 // feature depending on tuple with be disabled in this mode).
@@ -449,7 +414,7 @@
 #if GTEST_HAS_TR1_TUPLE
 
 #if GTEST_USE_OWN_TR1_TUPLE
-#include "gtest/internal/gtest-tuple.h"
+#include <gtest/internal/gtest-tuple.h>
 #elif GTEST_OS_SYMBIAN
 
 // On Symbian, BOOST_HAS_TR1_TUPLE causes Boost's TR1 tuple library to
@@ -509,15 +474,9 @@
 
 // Determines whether to support stream redirection. This is used to test
 // output correctness and to implement death tests.
-#ifndef GTEST_HAS_STREAM_REDIRECTION
-// By default, we assume that stream redirection is supported on all
-// platforms except known mobile ones.
-#if GTEST_OS_WINDOWS_MOBILE || GTEST_OS_SYMBIAN
-#define GTEST_HAS_STREAM_REDIRECTION 0
-#else
-#define GTEST_HAS_STREAM_REDIRECTION 1
+#if !GTEST_OS_WINDOWS_MOBILE && !GTEST_OS_SYMBIAN
+#define GTEST_HAS_STREAM_REDIRECTION_ 1
 #endif  // !GTEST_OS_WINDOWS_MOBILE && !GTEST_OS_SYMBIAN
-#endif  // GTEST_HAS_STREAM_REDIRECTION
 
 // Determines whether to support death tests.
 // Google Test does not support death tests for VC 7.1 and earlier as
@@ -557,11 +516,6 @@
 #define GTEST_WIDE_STRING_USES_UTF16_ \
     (GTEST_OS_WINDOWS || GTEST_OS_CYGWIN || GTEST_OS_SYMBIAN || GTEST_OS_AIX)
 
-// Determines whether test results can be streamed to a socket.
-#if GTEST_OS_LINUX
-#define GTEST_CAN_STREAM_RESULTS_ 1
-#endif
-
 // Defines some utility macros.
 
 // The GNU compiler emits a warning if nested "if" statements are followed by
@@ -575,7 +529,7 @@
 #ifdef __INTEL_COMPILER
 #define GTEST_AMBIGUOUS_ELSE_BLOCKER_
 #else
-#define GTEST_AMBIGUOUS_ELSE_BLOCKER_ switch (0) case 0: default:  // NOLINT
+#define GTEST_AMBIGUOUS_ELSE_BLOCKER_ switch (0) case 0:  // NOLINT
 #endif
 
 // Use this annotation at the end of a struct/class definition to
@@ -655,90 +609,7 @@ namespace internal {
 
 class String;
 
-// The GTEST_COMPILE_ASSERT_ macro can be used to verify that a compile time
-// expression is true. For example, you could use it to verify the
-// size of a static array:
-//
-//   GTEST_COMPILE_ASSERT_(ARRAYSIZE(content_type_names) == CONTENT_NUM_TYPES,
-//                         content_type_names_incorrect_size);
-//
-// or to make sure a struct is smaller than a certain size:
-//
-//   GTEST_COMPILE_ASSERT_(sizeof(foo) < 128, foo_too_large);
-//
-// The second argument to the macro is the name of the variable. If
-// the expression is false, most compilers will issue a warning/error
-// containing the name of the variable.
-
-template <bool>
-struct CompileAssert {
-};
-
-#define GTEST_COMPILE_ASSERT_(expr, msg) \
-  typedef ::testing::internal::CompileAssert<(bool(expr))> \
-      msg[bool(expr) ? 1 : -1]
-
-// Implementation details of GTEST_COMPILE_ASSERT_:
-//
-// - GTEST_COMPILE_ASSERT_ works by defining an array type that has -1
-//   elements (and thus is invalid) when the expression is false.
-//
-// - The simpler definition
-//
-//    #define GTEST_COMPILE_ASSERT_(expr, msg) typedef char msg[(expr) ? 1 : -1]
-//
-//   does not work, as gcc supports variable-length arrays whose sizes
-//   are determined at run-time (this is gcc's extension and not part
-//   of the C++ standard).  As a result, gcc fails to reject the
-//   following code with the simple definition:
-//
-//     int foo;
-//     GTEST_COMPILE_ASSERT_(foo, msg); // not supposed to compile as foo is
-//                                      // not a compile-time constant.
-//
-// - By using the type CompileAssert<(bool(expr))>, we ensures that
-//   expr is a compile-time constant.  (Template arguments must be
-//   determined at compile-time.)
-//
-// - The outter parentheses in CompileAssert<(bool(expr))> are necessary
-//   to work around a bug in gcc 3.4.4 and 4.0.1.  If we had written
-//
-//     CompileAssert<bool(expr)>
-//
-//   instead, these compilers will refuse to compile
-//
-//     GTEST_COMPILE_ASSERT_(5 > 0, some_message);
-//
-//   (They seem to think the ">" in "5 > 0" marks the end of the
-//   template argument list.)
-//
-// - The array size is (bool(expr) ? 1 : -1), instead of simply
-//
-//     ((expr) ? 1 : -1).
-//
-//   This is to avoid running into a bug in MS VC 7.1, which
-//   causes ((0.0) ? 1 : -1) to incorrectly evaluate to 1.
-
-// StaticAssertTypeEqHelper is used by StaticAssertTypeEq defined in gtest.h.
-//
-// This template is declared, but intentionally undefined.
-template <typename T1, typename T2>
-struct StaticAssertTypeEqHelper;
-
-template <typename T>
-struct StaticAssertTypeEqHelper<T, T> {};
-
-#if GTEST_HAS_GLOBAL_STRING
-typedef ::string string;
-#else
-typedef ::std::string string;
-#endif  // GTEST_HAS_GLOBAL_STRING
-
-#if GTEST_HAS_GLOBAL_WSTRING
-typedef ::wstring wstring;
-#elif GTEST_HAS_STD_WSTRING
-typedef ::std::wstring wstring;
-#endif  // GTEST_HAS_GLOBAL_WSTRING
+typedef ::std::stringstream StrStream;
 
 // A helper for suppressing warnings on constant condition.  It just
 // returns 'condition'.
@@ -848,16 +719,6 @@ class GTEST_API_ RE {
   GTEST_DISALLOW_ASSIGN_(RE);
 };
 
-// Formats a source file path and a line number as they would appear
-// in an error message from the compiler used to compile this code.
-GTEST_API_ ::std::string FormatFileLocation(const char* file, int line);
-
-// Formats a file location for compiler-independent XML output.
-// Although this function is not platform dependent, we put it next to
-// FormatFileLocation in order to contrast the two functions.
-GTEST_API_ ::std::string FormatCompilerIndependentFileLocation(const char* file,
-                                                               int line);
-
 // Defines logging utilities:
 //   GTEST_LOG_(severity) - logs messages at the specified severity level. The
 //                          message itself is streamed into the macro.
@@ -929,66 +790,6 @@ inline void FlushInfoLog() { fflush(NULL); }
 
 // INTERNAL IMPLEMENTATION - DO NOT USE IN USER CODE.
 //
-// Use ImplicitCast_ as a safe version of static_cast for upcasting in
-// the type hierarchy (e.g. casting a Foo* to a SuperclassOfFoo* or a
-// const Foo*).  When you use ImplicitCast_, the compiler checks that
-// the cast is safe.  Such explicit ImplicitCast_s are necessary in
-// surprisingly many situations where C++ demands an exact type match
-// instead of an argument type convertable to a target type.
-//
-// The syntax for using ImplicitCast_ is the same as for static_cast:
-//
-//   ImplicitCast_<ToType>(expr)
-//
-// ImplicitCast_ would have been part of the C++ standard library,
-// but the proposal was submitted too late.  It will probably make
-// its way into the language in the future.
-//
-// This relatively ugly name is intentional. It prevents clashes with
-// similar functions users may have (e.g., implicit_cast). The internal
-// namespace alone is not enough because the function can be found by ADL.
-template<typename To>
-inline To ImplicitCast_(To x) { return x; }
-
-// When you upcast (that is, cast a pointer from type Foo to type
-// SuperclassOfFoo), it's fine to use ImplicitCast_<>, since upcasts
-// always succeed.  When you downcast (that is, cast a pointer from
-// type Foo to type SubclassOfFoo), static_cast<> isn't safe, because
-// how do you know the pointer is really of type SubclassOfFoo?  It
-// could be a bare Foo, or of type DifferentSubclassOfFoo.  Thus,
-// when you downcast, you should use this macro.  In debug mode, we
-// use dynamic_cast<> to double-check the downcast is legal (we die
-// if it's not).  In normal mode, we do the efficient static_cast<>
-// instead.  Thus, it's important to test in debug mode to make sure
-// the cast is legal!
-//    This is the only place in the code we should use dynamic_cast<>.
-// In particular, you SHOULDN'T be using dynamic_cast<> in order to
-// do RTTI (eg code like this:
-//    if (dynamic_cast<Subclass1>(foo)) HandleASubclass1Object(foo);
-//    if (dynamic_cast<Subclass2>(foo)) HandleASubclass2Object(foo);
-// You should design the code some other way not to need this.
-//
-// This relatively ugly name is intentional. It prevents clashes with
-// similar functions users may have (e.g., down_cast). The internal
-// namespace alone is not enough because the function can be found by ADL.
-template<typename To, typename From>  // use like this: DownCast_<T*>(foo);
-inline To DownCast_(From* f) {  // so we only accept pointers
-  // Ensures that To is a sub-type of From *.  This test is here only
-  // for compile-time type checking, and has no overhead in an
-  // optimized build at run-time, as it will be optimized away
-  // completely.
-  if (false) {
-    const To to = NULL;
-    ::testing::internal::ImplicitCast_<From*>(to);
-  }
-
-#if GTEST_HAS_RTTI
-  // RTTI: debug mode only!
-  GTEST_CHECK_(f == NULL || dynamic_cast<To>(f) != NULL);
-#endif
-  return static_cast<To>(f);
-}
-
 // Downcasts the pointer of type Base to Derived.
 // Derived must be a subclass of Base. The parameter MUST
 // point to a class of type Derived, not any subclass of it.
@@ -1004,7 +805,7 @@ Derived* CheckedDowncastToActualType(Base* base) {
 #endif
 }
 
-#if GTEST_HAS_STREAM_REDIRECTION
+#if GTEST_HAS_STREAM_REDIRECTION_
 
 // Defines the stderr capturer:
 //   CaptureStdout     - starts capturing stdout.
@@ -1017,7 +818,7 @@ GTEST_API_ String GetCapturedStdout();
 GTEST_API_ void CaptureStderr();
 GTEST_API_ String GetCapturedStderr();
 
-#endif  // GTEST_HAS_STREAM_REDIRECTION
+#endif  // GTEST_HAS_STREAM_REDIRECTION_
 
 
 #if GTEST_HAS_DEATH_TEST
@@ -1150,6 +951,10 @@ class ThreadWithParam : public ThreadWithParamBase {
 
   GTEST_DISALLOW_COPY_AND_ASSIGN_(ThreadWithParam);
 };
+
+// gtest-port.h guarantees to #include <pthread.h> when GTEST_HAS_PTHREAD is
+// true.
+#include <pthread.h>
 
 // MutexBase and Mutex implement mutex on pthreads-based platforms. They
 // are used in conjunction with class MutexLock:
@@ -1454,42 +1259,6 @@ typedef __int64 BiggestInt;
 #define GTEST_HAS_ALT_PATH_SEP_ 0
 typedef long long BiggestInt;  // NOLINT
 #endif  // GTEST_OS_WINDOWS
-
-// Utilities for char.
-
-// isspace(int ch) and friends accept an unsigned char or EOF.  char
-// may be signed, depending on the compiler (or compiler flags).
-// Therefore we need to cast a char to unsigned char before calling
-// isspace(), etc.
-
-inline bool IsAlpha(char ch) {
-  return isalpha(static_cast<unsigned char>(ch)) != 0;
-}
-inline bool IsAlNum(char ch) {
-  return isalnum(static_cast<unsigned char>(ch)) != 0;
-}
-inline bool IsDigit(char ch) {
-  return isdigit(static_cast<unsigned char>(ch)) != 0;
-}
-inline bool IsLower(char ch) {
-  return islower(static_cast<unsigned char>(ch)) != 0;
-}
-inline bool IsSpace(char ch) {
-  return isspace(static_cast<unsigned char>(ch)) != 0;
-}
-inline bool IsUpper(char ch) {
-  return isupper(static_cast<unsigned char>(ch)) != 0;
-}
-inline bool IsXDigit(char ch) {
-  return isxdigit(static_cast<unsigned char>(ch)) != 0;
-}
-
-inline char ToLower(char ch) {
-  return static_cast<char>(tolower(static_cast<unsigned char>(ch)));
-}
-inline char ToUpper(char ch) {
-  return static_cast<char>(toupper(static_cast<unsigned char>(ch)));
-}
 
 // The testing::internal::posix namespace holds wrappers for common
 // POSIX functions.  These wrappers hide the differences between
