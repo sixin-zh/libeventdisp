@@ -43,7 +43,8 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 all : $(TESTS)
 
 clean :
-	rm -f $(TESTS) *.o write_test
+	rm -f $(TESTS) *.o write_test $(GTEST_DIR)/gtest_main.a \
+          $(GTEST_DIR)/gtest.a
 
 # Builds gtest.a and gtest_main.a.
 
@@ -55,21 +56,21 @@ GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
 # implementation details, the dependencies specified below are
 # conservative and not optimized.  This is fine as Google Test
 # compiles fast and for ordinary users its source rarely changes.
-#gtest-all.o : $(GTEST_SRCS_)
-#	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-#            $(GTEST_DIR)/src/gtest-all.cc
+gtest-all.o : $(GTEST_SRCS_)
+	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+            $(GTEST_DIR)/src/gtest-all.cc
 
-#gtest_main.o : $(GTEST_SRCS_)
-#	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-#            $(GTEST_DIR)/src/gtest_main.cc
+gtest_main.o : $(GTEST_SRCS_)
+	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+            $(GTEST_DIR)/src/gtest_main.cc
 
-#gtest.a : gtest-all.o
-#	$(AR) $(ARFLAGS) $@ $^
+$(GTEST_DIR)/gtest.a : gtest-all.o
+	$(AR) $(ARFLAGS) $@ $^
 
-#gtest_main.a : gtest-all.o gtest_main.o
-#	$(AR) $(ARFLAGS) $@ $^
+$(GTEST_DIR)/gtest_main.a : gtest-all.o gtest_main.o
+	$(AR) $(ARFLAGS) $@ $^
 
-# Builds a sample test.  A test should link with either gtest.a or
+# Builds the test.  A test should link with either gtest.a or
 # gtest_main.a, depending on whether it defines its own main()
 # function.
 
