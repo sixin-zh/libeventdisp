@@ -83,10 +83,9 @@ void checkIOProgress(aiocb *aioCB, IOCallback *callback) {
   }
   else {
     if (callback != NULL) {
-      ssize_t ioResult = aio_return(aioCB);
-    
-      if (status == 0 && ioResult > 0) {
+      if (status == 0) {
         if (callback->okCB != NULL) {
+          ssize_t ioResult = aio_return(aioCB);
           Dispatcher::instance()->enqueue(
               new UnitTask(bind(*callback->okCB, aioCB->aio_fildes,
                                 const_cast<void *>(aioCB->aio_buf),
