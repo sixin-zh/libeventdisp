@@ -6,7 +6,7 @@
 #include <cstring>
 #include <cerrno>
 
-//define LIBEVENT_USE_SIG 1
+//#define LIBEVENT_USE_SIG 1
 
 using nyu_libeventdisp::Dispatcher;
 using std::tr1::bind;
@@ -104,6 +104,53 @@ void checkIOProgress(aiocb *aioCB, IOCallback *callback) {
     delete aioCB;
   }
 }
+
+int aioSkeletonFunction(int (*aio_func)(aiocb *), int fd, void *buff,
+                        size_t len, off_t offset, IOCallback *callback) {
+  aiocb *aioCB = new aiocb();
+
+  memset(reinterpret_cast<char *>(aioCB), 0, sizeof(aiocb));
+  aioCB->aio_buf = buff;
+  aioCB->aio_fildes = fd;
+  aioCB->aio_nbytes = len;
+  aioCB->aio_offset = offset;
+
+#ifdef LIBEVENT_USE_SIG
+  aioCB->aio_sigevent.sigev_notify = SIGEV_THREAD;
+  aioCB->aio_sigevent.sigev_notify_function = aioDone;
+  aioCB->aio_sigevent.sigev_notify_attributes = NULL;
+  aioCB->aio_sigevent.sigev_value.sival_ptr =
+      static_cast<void *>(new AIOSigHandlerInfo(aioCB, callback));
+#endif
+  
+  int ret = aio_func(aioCB);
+
+  if (ret >= 0) {
+#ifndef LIBEVENT_USE_SIG
+    checkIOProgress(aioCB, callback);
+#endif
+  }
+  else {
+    if (callback != NULL) {
+      if (callback->errCB != NULL) {
+        Dispatcher::instance()->enqueue(
+            new UnitTask(bind(*callback->errCB, aioCB->aio_fildes,
+                              errno), callback->id));
+      }
+
+      delete callback;
+    }
+
+#ifdef LIBEVENT_USE_SIG
+    delete reinterpret_cast<AIOSigHandlerInfo *>(
+        aioCB->aio_sigevent.sigev_value.sival_ptr);
+#endif
+    
+    delete aioCB;
+  }
+
+  return ret;
+}
 } //namespace
 
 namespace nyu_libeventdisp {
@@ -127,78 +174,12 @@ IOCallback::~IOCallback() {
 
 int aio_read(int fd, void *buff, size_t len, off_t offset,
              IOCallback *callback) {
-  aiocb *aioCB = new aiocb();
-
-  memset(reinterpret_cast<char *>(aioCB), 0, sizeof(aiocb));
-  aioCB->aio_buf = buff;
-  aioCB->aio_fildes = fd;
-  aioCB->aio_nbytes = len;
-  aioCB->aio_offset = offset;
-
-#ifdef LIBEVENT_USE_SIG
-  aioCB->aio_sigevent.sigev_notify_function = aioDone;
-  aioCB->aio_sigevent.sigev_notify_attributes = NULL;
-  aioCB->aio_sigevent.sigev_value.sival_ptr =
-      static_cast<void *>(new AIOSigHandlerInfo(aioCB, callback));
-#endif
-  
-  int ret = aio_read(aioCB);
-
-  if (ret >= 0) {
-    checkIOProgress(aioCB, callback);
-  }
-  else {
-#ifndef LIBEVENT_USE_SIG
-    if (callback != NULL) {
-      delete callback;
-    }
-    
-    delete aioCB;
-#else
-    delete reinterpret_cast<AIOSigHandlerInfo *>(
-        aioCB->aio_sigevent.sigev_value.sival_ptr);
-#endif
-  }
-
-  return ret;
+  return aioSkeletonFunction(::aio_read, fd, buff, len, offset, callback);
 }
 
 int aio_write(int fd, void *buff, size_t len, off_t offset,
               IOCallback *callback) {
-  aiocb *aioCB = new aiocb();
-
-  memset(reinterpret_cast<char *>(aioCB), 0, sizeof(aiocb));
-  aioCB->aio_buf = buff;
-  aioCB->aio_fildes = fd;
-  aioCB->aio_nbytes = len;
-  aioCB->aio_offset = offset;
-
-#ifdef LIBEVENT_USE_SIG
-  aioCB->aio_sigevent.sigev_notify_function = aioDone;
-  aioCB->aio_sigevent.sigev_notify_attributes = NULL;
-  aioCB->aio_sigevent.sigev_value.sival_ptr =
-      static_cast<void *>(new AIOSigHandlerInfo(aioCB, callback));
-#endif
-  
-  int ret = aio_write(aioCB);
-
-  if (ret >= 0) {
-    checkIOProgress(aioCB, callback);
-  }
-  else {
-#ifndef LIBEVENT_USE_SIG
-    if (callback != NULL) {
-      delete callback;
-    }
-    
-    delete aioCB;
-#else
-    delete reinterpret_cast<AIOSigHandlerInfo *>(
-        aioCB->aio_sigevent.sigev_value.sival_ptr);
-#endif
-  }
-
-  return ret;
+  return aioSkeletonFunction(::aio_write, fd, buff, len, offset, callback);
 }
 }
 
