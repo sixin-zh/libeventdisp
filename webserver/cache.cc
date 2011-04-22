@@ -11,5 +11,8 @@ bool Cache::put(const char *key, char *buf, size_t size) {
 bool Cache::get(const char *key, char **buff, size_t &size) {
   return false;
 }
+
+void Cache::doneWith(const char *key) {
+}
 }
 
