@@ -17,10 +17,10 @@
 GTEST_DIR = ..
 
 # Where to find user code.
-USER_DIR = .
+USER_DIR = $(GTEST_DIR)/../webserver
 
 # Flags passed to the preprocessor.
-CPPFLAGS += -I$(GTEST_DIR)/include -I$(GTEST_DIR)/../lib/inc
+CPPFLAGS += -I$(GTEST_DIR)/include -I$(USER_DIR)
 
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra -L$(GTEST_DIR)/../build -leventdisp
@@ -30,8 +30,7 @@ LINKERFLAGS = -lpthread -lrt
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = all_test event_dispatcher_unittest aio_wrapper_unittest \
-  mp_event_dispatcher_unittest delayed_task_unittest
+TESTS = all_test 
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -43,7 +42,7 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 all : $(TESTS)
 
 clean :
-	rm -f $(TESTS) *.o write_test $(GTEST_DIR)/gtest_main.a \
+	rm -f $(TESTS) *.o $(GTEST_DIR)/gtest_main.a \
           $(GTEST_DIR)/gtest.a
 
 # Builds gtest.a and gtest_main.a.
@@ -74,39 +73,12 @@ $(GTEST_DIR)/gtest_main.a : gtest-all.o gtest_main.o
 # gtest_main.a, depending on whether it defines its own main()
 # function.
 
-test_helper.o : $(USER_DIR)/test_helper.cc $(GTEST_HEADERS)
+fast_fifo_test.o : fast_fifo_test.cc $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
 
-event_dispatcher_unittest.o : $(USER_DIR)/event_dispatcher_unittest.cc \
-                              $(GTEST_HEADERS)
+cache_test.o : cache_test.cc $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
 
-mp_event_dispatcher_unittest.o : $(USER_DIR)/mp_event_dispatcher_unittest.cc \
-                                 $(GTEST_HEADERS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
-
-aio_wrapper_unittest.o : $(USER_DIR)/aio_wrapper_unittest.cc \
-                         $(GTEST_HEADERS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
-
-event_dispatcher_unittest : event_dispatcher_unittest.o test_helper.o \
-                            $(GTEST_DIR)/gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
-
-mp_event_dispatcher_unittest : mp_event_dispatcher_unittest.o test_helper.o \
-                              $(GTEST_DIR)/gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
-
-aio_wrapper_unittest : custom_main.cc aio_wrapper_unittest.o \
-                       $(GTEST_DIR)/gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
-
-delayed_task_unittest : custom_main.cc delayed_task_unittest.o \
-                       $(GTEST_DIR)/gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
-
-all_test : custom_main.cc event_dispatcher_unittest.o aio_wrapper_unittest.o \
-           mp_event_dispatcher_unittest.o test_helper.o \
-           delayed_task_unittest.o $(GTEST_DIR)/gtest_main.a
+all_test : fast_fifo_test.o cache_test.o $(GTEST_DIR)/gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
 
