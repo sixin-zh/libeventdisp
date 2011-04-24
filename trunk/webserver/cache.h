@@ -32,19 +32,18 @@ class Cache {
   explicit Cache(size_t sizeQuota);
   ~Cache();
 
-  // Puts an item in the cache and set the reference count to 1. This also
-  // attempts to free objects from the free list if the quota is reached.
+  // Puts an item into the cache and sets the reference count to 1.
   //
   // Params:
-  //  key - the name for the object to put into the cache.
-  //  buf - the object to put into the cache. The object life cycle will be
-  //    managed by this cache only when it is successfully stored into the
-  //    cache. Important: buf should be allocated using malloc and not new.
+  //  key - the name for the object to put into this cache.
+  //  buf - the object to put into the cache. The ownership of buf will be
+  //    transferred to this cache when this operation was successful.
+  //    Important: buf should be allocated using malloc and not new.
   //  size - the size of the object in bytes.
   //
-  // Returns true if buf was successfully stored into the cache. Also returns
-  //   false if the cache already contains an object with the same name as key.
-  bool put(const char *key, char *buf, size_t size);
+  // Returns true if buf was successfully stored into this cache. This can
+  //   fail if there is already an existing entry with the same name as key.
+  bool put(const char *key, const char *buf, size_t size);
 
   // Gets an item from the cache. This also has a side effect of removing the
   // object from the free list and incrementing the reference count for the
@@ -53,30 +52,31 @@ class Cache {
   // Params:
   //  key - the name of the object to extract from the cache.
   //  buf - will contain the object if successful. The buf will be guaranteed
-  //    to be valid until 
+  //    to be valid until and in the cache until doneWith is called or until
+  //    this cache is destroyed.
   //  size - will contain the size of the object if successful.
   //
   // Returns true if the object was successfully extracted from the cache.
-  bool get(const char *key, char **buf, size_t &size);
-
-  // Completely remove an object from the cache. The object will be gone forever
-  // and will not be moved to the free list.
-  // void remove(const char *key);
+  bool get(const char *key, const char **buf, size_t &size);
 
   // Inform this cache object that the given object can be released. This has a
-  // side effect of decrementing the reference counter for the object.
+  // side effect of decrementing the reference counter for the object and also
+  // attempts to free objects from the free list if the quota is reached.
+  //
+  // Param:
+  //  key - the name of the object.
   void doneWith(const char *key);
 
  private:
   struct CacheEntry {
     const char *name;
-    char *data;
+    const char *data;
     const size_t size;
     
     size_t refCount;
     FastFIFONode<CacheEntry> *freeListRef;
 
-    CacheEntry(const char *name, char *data, size_t size);
+    CacheEntry(const char *name, const char *data, size_t size);
   };
 
   typedef std::tr1::unordered_map<const char *, CacheEntry> CacheMap;
@@ -86,6 +86,13 @@ class Cache {
   CacheMap cacheMap_;
   FastFIFO<CacheEntry> freeList_;
 
+  // Cleans up the free list.
+  //
+  // Param:
+  //  space - the minimum size to clean up. Note that this is best effort and
+  //    is not guaranteed.
+  void cleanup(size_t space);
+  
   // Disallow copying
   Cache(const Cache&);
   void operator=(const Cache&);

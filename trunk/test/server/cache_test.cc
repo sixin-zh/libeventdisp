@@ -5,7 +5,7 @@ using nyu_libedisp_webserver::Cache;
 
 TEST(CacheTest, Empty) {
   Cache cache(10);
-  char *c;
+  const char *c;
   size_t size;
   
   ASSERT_FALSE(cache.get("c", &c, size));
@@ -18,14 +18,14 @@ TEST(CacheTest, OneEntryGet) {
   *a = 7;
   ASSERT_TRUE(cache.put("a", a, sizeof(char)));
 
-  char *a2 = NULL;
+  const char *a2 = NULL;
   size_t a2_size;
   ASSERT_TRUE(cache.get("a", &a2, a2_size));
   EXPECT_EQ(a, a2);
   EXPECT_EQ(*a, *a2); // test no seg fault
   EXPECT_EQ(sizeof(char), a2_size);
 
-  char *a3 = NULL;
+  const char *a3 = NULL;
   size_t a3_size;
   ASSERT_TRUE(cache.get("a", &a3, a3_size));
   EXPECT_EQ(a, a3);
@@ -44,14 +44,14 @@ TEST(CacheTest, TwoEntryGet) {
   *b = 18;
   ASSERT_TRUE(cache.put("b", b, sizeof(char)));
 
-  char *b2 = NULL;
+  const char *b2 = NULL;
   size_t b2_size;
   ASSERT_TRUE(cache.get("b", &b2, b2_size));
   EXPECT_EQ(b, b2);
   EXPECT_EQ(*b, *b2); // test no seg fault
   EXPECT_EQ(sizeof(char), b2_size);
 
-  char *a2 = NULL;
+  const char *a2 = NULL;
   size_t a2_size;
   ASSERT_TRUE(cache.get("a", &a2, a2_size));
   EXPECT_EQ(a, a2);
@@ -71,10 +71,10 @@ TEST(CacheTest, DuplicatePut) {
   *a2 = 34;
   EXPECT_FALSE(cache.put("a", reinterpret_cast<char *>(a2), size));
   
-  char *a3 = NULL;
+  const char *a3 = NULL;
   size_t a3_size;
   ASSERT_TRUE(cache.get("a", &a3, a3_size));
-  EXPECT_EQ(a, reinterpret_cast<int *>(a3));
+  EXPECT_EQ(a, reinterpret_cast<const int *>(a3));
   EXPECT_EQ(*a, static_cast<char>(*a3)); // test no seg fault
   EXPECT_EQ(size, a3_size);
 
@@ -97,21 +97,21 @@ TEST(CacheTest, VarSizeEntries) {
   memset(a, 33, 3*sizeof(char));
   ASSERT_TRUE(cache.put("key-c", c, 3*sizeof(char)));
 
-  char *c2;
+  const char *c2 = NULL;
   size_t c2_size;
   EXPECT_TRUE(cache.get("key-c", &c2, c2_size));
   EXPECT_EQ(c, c2);
   EXPECT_EQ(*c, *c2); // test no seg fault
   EXPECT_EQ(3*sizeof(char), c2_size);
   
-  char *b2;
+  const char *b2 = NULL;
   size_t b2_size;
   EXPECT_TRUE(cache.get("key-b", &b2, b2_size));
   EXPECT_EQ(b, b2);
   EXPECT_EQ(*b, *b2); // test no seg fault
   EXPECT_EQ(sizeof(char), b2_size);
 
-  char *a2;
+  const char *a2 = NULL;
   size_t a2_size;
   EXPECT_TRUE(cache.get("key-a", &a2, a2_size));
   EXPECT_EQ(a, a2);
@@ -129,18 +129,12 @@ TEST(CacheTest, DoneWithThenGet) {
 
   cache.doneWith(key);
 
-  char *a2;
+  const char *a2 = NULL;
   size_t a2_size;
   EXPECT_TRUE(cache.get(key, &a2, a2_size));
   EXPECT_EQ(a, a2);
   EXPECT_EQ(*a, *a2); // test no seg fault
   EXPECT_EQ(2*sizeof(char), a2_size);
-
-  char *b = reinterpret_cast<char *>(malloc(sizeof(char)));
-  *b = 18;
-  EXPECT_FALSE(cache.put("b", b, sizeof(char)));
-  
-  free(b);
 }
 
 TEST(CacheTest, InvalidDoneWithThenGet) {
@@ -153,18 +147,12 @@ TEST(CacheTest, InvalidDoneWithThenGet) {
 
   EXPECT_DEATH(cache.doneWith("Fake Key"), "Assertion");
 
-  char *b = reinterpret_cast<char *>(malloc(sizeof(char)));
-  *b = 18;
-  EXPECT_FALSE(cache.put("b", b, sizeof(char)));
-  
-  char *a2;
+  const char *a2 = NULL;
   size_t a2_size;
   EXPECT_TRUE(cache.get(key, &a2, a2_size));
   EXPECT_EQ(a, a2);
   EXPECT_EQ(*a, *a2); // test no seg fault
   EXPECT_EQ(2*sizeof(char), a2_size);
-
-  free(b);
 }
 
 TEST(CacheTest, ExceedQuota) {
@@ -180,24 +168,60 @@ TEST(CacheTest, ExceedQuota) {
 
   char *c = reinterpret_cast<char *>(malloc(3*sizeof(char)));
   memset(a, 33, 3*sizeof(char));
-  EXPECT_FALSE(cache.put("c", c, 3*sizeof(char)));
+  ASSERT_TRUE(cache.put("c", c, 3*sizeof(char)));
   
   cache.doneWith("a");
-  EXPECT_FALSE(cache.put("c", c, 3*sizeof(char)));
-
-  cache.doneWith("b");
-  EXPECT_TRUE(cache.put("c", c, 3*sizeof(char)));
-
-  char *a2;
+  const char *a2;
   size_t a2_size = 0;
   EXPECT_FALSE(cache.get("a", &a2, a2_size));
+
+  cache.doneWith("b");
   EXPECT_FALSE(cache.get("b", &a2, a2_size));
   
-  char *c2;
+  const char *c2;
   size_t c2_size;
   ASSERT_TRUE(cache.get("c", &c2, c2_size));
   EXPECT_EQ(c, c2);
   EXPECT_EQ(*c, *c2); // test no seg fault
   EXPECT_EQ(3*sizeof(char), c2_size);
+}
+
+TEST(CacheTest, TestRefCount) {
+  Cache cache(1);
+  
+  char *a = reinterpret_cast<char *>(malloc(sizeof(char)));
+  *a = 7;
+  ASSERT_TRUE(cache.put("a", a, sizeof(char)));
+
+  char *b = reinterpret_cast<char *>(malloc(sizeof(char)));
+  *b = 18;
+  ASSERT_TRUE(cache.put("b", b, sizeof(char)));
+
+  const char *a2;
+  size_t a2_size;
+  EXPECT_TRUE(cache.get("a", &a2, a2_size));
+  EXPECT_EQ(a, a2);
+  EXPECT_EQ(*a, *a2); // test no seg fault
+
+  cache.doneWith("a");
+
+  const char *a3;
+  size_t a3_size;
+  EXPECT_TRUE(cache.get("a", &a3, a3_size));
+  EXPECT_EQ(a, a3);
+  EXPECT_EQ(*a, *a3); // test no seg fault
+
+  cache.doneWith("a");
+  cache.doneWith("a");
+  EXPECT_DEATH(cache.doneWith("a"), "Assertion");
+  const char *a4;
+  size_t a4_size;
+  EXPECT_FALSE(cache.get("a", &a4, a4_size));
+
+  const char *b2;
+  size_t b2_size;
+  EXPECT_TRUE(cache.get("b", &b2, b2_size));
+  EXPECT_EQ(b, b2);
+  EXPECT_EQ(*b, *b2); // test no seg fault
 }
 
