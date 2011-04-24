@@ -16,17 +16,21 @@
 #define LIBEVENTDISP_CACHE_H_
 
 #include <cstddef>
+#include <tr1/unordered_map>
+
+#include "fast_fifo.h"
 
 namespace nyu_libedisp_webserver {
 // A simple key-value cache with a fixed quota that also keeps count of how many
-// clients are using a cached object.
+// clients are using a cached object. This implementation is not thread-safe.
 class Cache {
  public:
-  // Create a new cache instance.
+  // Creates a new cache instance.
   //
   // Param:
   //  sizeQuota - the maximum size of data this cache should hold in bytes.
   explicit Cache(size_t sizeQuota);
+  ~Cache();
 
   // Puts an item in the cache and set the reference count to 1. This also
   // attempts to free objects from the free list if the quota is reached.
@@ -35,8 +39,8 @@ class Cache {
   //  key - the name for the object to put into the cache.
   //  buf - the object to put into the cache. The object life cycle will be
   //    managed by this cache only when it is successfully stored into the
-  //    cache.
-  //  size - the size of the ojbject in bytes.
+  //    cache. Important: buf should be allocated using malloc and not new.
+  //  size - the size of the object in bytes.
   //
   // Returns true if buf was successfully stored into the cache. Also returns
   //   false if the cache already contains an object with the same name as key.
@@ -53,7 +57,7 @@ class Cache {
   //  size - will contain the size of the object if successful.
   //
   // Returns true if the object was successfully extracted from the cache.
-  bool get(const char *key, char **buff, size_t &size);
+  bool get(const char *key, char **buf, size_t &size);
 
   // Completely remove an object from the cache. The object will be gone forever
   // and will not be moved to the free list.
@@ -64,7 +68,27 @@ class Cache {
   void doneWith(const char *key);
 
  private:
-  size_t sizeQuota_;
+  struct CacheEntry {
+    const char *name;
+    char *data;
+    const size_t size;
+    
+    size_t refCount;
+    FastFIFONode<CacheEntry> *freeListRef;
+
+    CacheEntry(const char *name, char *data, size_t size);
+  };
+
+  typedef std::tr1::unordered_map<const char *, CacheEntry> CacheMap;
+  
+  const size_t sizeQuota_;
+  size_t currentSize_;
+  CacheMap cacheMap_;
+  FastFIFO<CacheEntry> freeList_;
+
+  // Disallow copying
+  Cache(const Cache&);
+  void operator=(const Cache&);
 };
 }
 

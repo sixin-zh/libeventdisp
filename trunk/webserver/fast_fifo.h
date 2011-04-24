@@ -15,6 +15,8 @@
 #ifndef LIBEVENTDISP_FAST_FIFO_H_
 #define LIBEVENTDISP_FAST_FIFO_H_
 
+#include <cassert>
+
 namespace nyu_libedisp_webserver {
 template <typename T> class FastFIFO;
 
@@ -38,6 +40,7 @@ template <typename T>
 class FastFIFO {
  public:
   FastFIFO(void);
+  ~FastFIFO();
 
   // Remove the node from this FIFO.
   //
@@ -51,7 +54,8 @@ class FastFIFO {
   // Push a data to this object.
   //
   // Param:
-  //  data - the data to store
+  //  data - the data to store. The client is still responsible for the
+  //    lifecycle of the data.
   //
   // Returns the node that contains the data
   FastFIFONode<T>* push(T *data);
@@ -68,6 +72,10 @@ class FastFIFO {
  private:
   FastFIFONode<T> *tail_;
   FastFIFONode<T> *head_;
+
+  // Disallow copying
+  FastFIFO(const FastFIFO<T>&);
+  void operator=(const FastFIFO<T>&);
 };
 
 template <typename T>
@@ -76,6 +84,12 @@ FastFIFONode<T>::FastFIFONode(T *data) : data(data), before(NULL), next(NULL) {
 
 template <typename T>
 FastFIFO<T>::FastFIFO(void) : tail_(new FastFIFONode<T>(NULL)), head_(tail_) {
+}
+
+template <typename T>
+FastFIFO<T>::~FastFIFO(void) {
+  T *dummy;
+  while (pop(&dummy));
 }
 
 template <typename T>
