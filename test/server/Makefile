@@ -18,12 +18,13 @@ GTEST_DIR = ..
 
 # Where to find user code.
 USER_DIR = $(GTEST_DIR)/../webserver
+USER_OBJ = $(USER_DIR)/cache.o
 
 # Flags passed to the preprocessor.
 CPPFLAGS += -I$(GTEST_DIR)/include -I$(USER_DIR)
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -L$(GTEST_DIR)/../build -leventdisp
+CXXFLAGS += -g -Wall -Wextra -L$(GTEST_DIR)/../build
 
 # Flags passed to the C++ linker.
 LINKERFLAGS = -lpthread -lrt
@@ -80,5 +81,5 @@ cache_test.o : cache_test.cc $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $<
 
 all_test : fast_fifo_test.o cache_test.o $(GTEST_DIR)/gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LINKERFLAGS) $(USER_OBJ) $^ -o $@
 
