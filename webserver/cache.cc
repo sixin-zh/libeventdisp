@@ -6,7 +6,7 @@
 using std::make_pair;
 
 namespace nyu_libedisp_webserver {
-Cache::CacheEntry::CacheEntry(const char *name, char *data, size_t size) :
+Cache::CacheEntry::CacheEntry(const char *name, const char *data, size_t size) :
     name(name), data(data), size(size), refCount(1), freeListRef(NULL) {
 }
 
@@ -17,7 +17,7 @@ Cache::~Cache() {
   for (CacheMap::iterator iter = cacheMap_.begin();
        iter != cacheMap_.end(); ++iter) {
     CacheEntry &entry = iter->second;
-    free(entry.data);
+    free(const_cast<char *>(entry.data));
 
     FastFIFONode<CacheEntry> *node = entry.freeListRef;
     if (node != NULL) {
@@ -27,48 +27,25 @@ Cache::~Cache() {
 
   CacheEntry *entry;
   while (freeList_.pop(&entry)) {
-    free(entry->data);
+    free(const_cast<char *>(entry->data));
   }
 }
 
-bool Cache::put(const char *key, char *buf, size_t size) {
+bool Cache::put(const char *key, const char *buf, size_t size) {
   bool ret = false;
 
   CacheMap::iterator iter = cacheMap_.find(key);
 
   if (iter == cacheMap_.end()) {
-    size_t freeSpace = sizeQuota_ - currentSize_;
-    
-    if (freeSpace < size) {
-      const size_t spaceNeeded = size - freeSpace;
-      size_t spaceFreed = 0;
-      CacheEntry *entry = NULL;
-
-      // Try to delete data from the free list
-      while (freeList_.pop(&entry) && spaceFreed < spaceNeeded) {
-        free(entry->data);
-        spaceFreed += entry->size;
-        assert(entry->refCount == 0);
-        cacheMap_.erase(entry->name);
-      }
-
-      freeSpace += spaceFreed;
-      currentSize_ -= spaceFreed;
-    }
-
-
-    // Check again if space is enough
-    if (freeSpace >= size) {
-      cacheMap_.insert(make_pair(key, CacheEntry(key, buf, size)));
-      currentSize_ += size;
-      ret = true;
-    }
+    cacheMap_.insert(make_pair(key, CacheEntry(key, buf, size)));
+    currentSize_ += size;
+    ret = true;
   }
   
   return ret;
 }
 
-bool Cache::get(const char *key, char **buf, size_t &size) {
+bool Cache::get(const char *key, const char **buf, size_t &size) {
   bool ret = false;
 
   CacheMap::iterator iter = cacheMap_.find(key);
@@ -103,6 +80,25 @@ void Cache::doneWith(const char *key) {
   else {
     assert(false);
   }
+
+  if (currentSize_ > sizeQuota_) {
+    cleanup(currentSize_ - sizeQuota_);
+  }
+}
+
+void Cache::cleanup(size_t space) {
+  size_t spaceFreed = 0;
+  CacheEntry *entry = NULL;
+
+  // Try to delete data from the free list
+  while (freeList_.pop(&entry) && spaceFreed < space) {
+    assert(entry->refCount == 0);
+    free(const_cast<char *>(entry->data));
+    spaceFreed += entry->size;
+    cacheMap_.erase(entry->name);
+  }
+
+  currentSize_ -= spaceFreed;
 }
 }
 
