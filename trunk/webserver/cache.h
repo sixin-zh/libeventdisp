@@ -17,10 +17,22 @@
 
 #include <cstddef>
 #include <tr1/unordered_map>
+#include <tr1/functional>
+#include <list>
 
 #include "fast_fifo.h"
 
 namespace nyu_libedisp_webserver {
+struct CacheData {
+  const char *data;
+  const size_t size;
+  const bool isCached;
+
+  CacheData(const char *data, size_t size, bool isCached);
+};
+
+typedef std::tr1::function<void (const CacheData &)> CacheCallback;
+
 // A simple key-value cache with a fixed quota that also keeps count of how many
 // clients are using a cached object. This implementation is not thread-safe.
 class Cache {
@@ -32,7 +44,9 @@ class Cache {
   explicit Cache(size_t sizeQuota);
   ~Cache();
 
-  // Puts an item into the cache and sets the reference count to 1.
+  // Puts an item into the cache and sets the reference count to 1. Also calls
+  // all callbacks queued for this queue if it was previously reserved with
+  // isCached set to true.
   //
   // Params:
   //  key - the name for the object to put into this cache.
@@ -51,15 +65,45 @@ class Cache {
   //
   // Params:
   //  key - the name of the object to extract from the cache.
-  //  buf - will contain the object if successful. The buf will be guaranteed
-  //    to be valid until and in the cache until doneWith is called or until
-  //    this cache is destroyed.
-  //  size - will contain the size of the object if successful.
+  //  callback - the callback object that will be called/queued when the
+  //    cache has the data. The ownership of the callback will be passed to
+  //    this object.
   //
-  // Returns true if the object was successfully extracted from the cache.
-  bool get(const char *key, const char **buf, size_t &size);
+  //    The following will be set to CacheData when the callback is called:
+  //
+  //    buf - will contain the object if successful. The buf will be guaranteed
+  //      to be valid until and in the cache until doneWith is called or until
+  //      this cache is destroyed.
+  //    size - will contain the size of the object if successful.
+  //    isCached - will be set to true when data was actually acquired from
+  //      the cache.
+  //
+  // Returns false if no such key exists. Returns true if the object was
+  //   successfully extracted from the cache or callback was successfully
+  //   queued.
+  bool get(const char *key, CacheCallback *callback);
 
-  // Inform this cache object that the given object can be released. This has a
+  // Reserves a slot in the cache. This is an indication of intent to put data
+  // for this key. Subsequent calls on get will have their callbacks queued and
+  // will be triggered after a put or cancelReservation is called.
+  //
+  // Params:
+  //  key - the key of the slot to reserve
+  //
+  // Returns true if reservation was successful. Fails if the slot is currently
+  //   occupied or already reserved.
+  bool reserve(const char *key);
+
+  // Cancels a previous reservationt in the slot. Also calls all the callbacks
+  // queued for this key with isCached set to false.
+  //
+  // Params:
+  //  key - the key to cancel the reservation.
+  //
+  // Returns false if the key was not reserved.
+  bool cancelReservation(const char *key);
+  
+  // Informs this cache object that the given object can be released. This has a
   // side effect of decrementing the reference counter for the object and also
   // attempts to free objects from the free list if the quota is reached.
   //
@@ -71,11 +115,17 @@ class Cache {
   struct CacheEntry {
     const char *name;
     const char *data;
-    const size_t size;
+    size_t size;
     
     size_t refCount;
     FastFIFONode<CacheEntry> *freeListRef;
+    bool isReserved; // slot is reserved, but data is still invalid
+    std::list<CacheCallback *> queue;
 
+    // Creates a reserved cache entry with no initial data
+    CacheEntry(const char *name);
+
+    // Creates a new cache entry
     CacheEntry(const char *name, const char *data, size_t size);
   };
 
