@@ -4,6 +4,11 @@
 #include <svr_tcp_ip.h>
 
 // #define CTLR "\n"
+#define MAXRH  8192
+#define MAXWH  8192
+#define MAXWHL 256    // max 32 lines for head
+#define MAXWB  65536  // hex: 10000
+
 
 enum HttpSN {
   N_200,

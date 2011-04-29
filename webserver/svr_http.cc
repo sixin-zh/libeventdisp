@@ -5,11 +5,11 @@
 #include <svr_tcp_ip.h>
 
 // including '\0'
-#define MAXRH  8192
+
 #define MAXWH  8192
 #define MAXWHL 256    // max 32 lines for head
 #define MAXWB  65536  // hex: 10000
-#define MAXWBC 5      // max char for encoding hex length (not including '\n')
+//#define MAXWBC 5      // max char for encoding hex length (not including '\n')
 
 #include <dispatcher.h>
 #include <aio_wrapper.h>
@@ -187,12 +187,12 @@ ErrHTTP svr_http_header_aio(HPKG * &pk) {
       pk->chead.p = _tmp; pk->chead.n = 23; pk->chead.cached = true;
       // put
       bool isput = _cache.put(pk->headkey, pk->chead.p, pk->chead.n);
-      if (DBGL <= 3) assert(isput == true);
+      if (DBGL >= 3) assert(isput == true);
       // write
       svr_http_write(pk);
       // cancel reservation
       bool iscancel = cache.cancelReservation(pk->headkey);
-      if (DBGL <= 3) assert(iscancel == true);
+      if (DBGL >= 3) assert(iscancel == true);
 
     } // end 404
     else {             // 200
@@ -209,7 +209,7 @@ ErrHTTP svr_http_header_aio(HPKG * &pk) {
 
       // MALLOC
       charn & _tmp = pk->chead;
-      if (DBGL <= 3) assert (_tmp.p == NULL);
+      if (DBGL >= 3) assert (_tmp.p == NULL);
       _tmp.p = (char*) malloc (MAXWH); _tmp.n = MAXWH-1; _tmp.cached = true;
       memset(_tmp.p, 0, sizeof(char)*MAXWH);
       // status line
@@ -251,19 +251,18 @@ ErrHTTP svr_http_header_aio(HPKG * &pk) {
 
       // PUT HEAD
       bool isput = _cache.put(pk->headkey, pk->chead.p, pk->chead.n);
-      if (DBGL <= 3) assert(isput == true);
+      if (DBGL >= 3) assert(isput == true);
 
       // WRITE
       svr_http_write(pk);
 
       // CANCEL RESERVATION
       bool iscancel = _cache.cancelReservation(pk->headkey);
-      if (DBGL <= 3) assert(iscancel == true);
+      if (DBGL >= 3) assert(iscancel == true);
 
     } // end 200
     
   } // end open
-
 
 }
 
@@ -321,8 +320,7 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
   // 400
   if ((pk->met.p == NULL) || (pk->ver.p == NULL) || (pk->uri.p == NULL)) {
     pk->hsn = N_400;
-    pk->chead.p = _sline_400[1]; pk->chead.n = 25; pk->chead.cached = true;
-    pk->headkey = NULL;
+    pk->chead.p = _sline_400[1]; pk->chead.n = 25; pk->chead.cached = true; pk->headkey = NULL;
     return svr_http_write(pk);
   }
 
@@ -333,8 +331,7 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
     pk->vern = 1;
   } else {
     pk->hsn = N_400;
-    pk->chead.p = _sline_400[1]; pk->chead.n = 25; pk->chead.cached = true;
-    pk->headkey = NULL;
+    pk->chead.p = _sline_400[1]; pk->chead.n = 25; pk->chead.cached = true; pk->headkey = NULL;
     return svr_http_write(pk);
   }
 
@@ -368,18 +365,23 @@ ErrHTTP svr_http_write_aio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes
   if (DBGL >= 4) printf("[svr_http_write_aio] (hpkg=%x, wst=%d)\n", pk, pk->wst);
 
   // state transfer
-  if (pk->wst == WS_SLINE) pk->wst = WS_HEAD;
-  else if (pk->wst == WS_HEAD) pk->wst = WS_BODY;
+  if (pk->wst == WS_HEAD) {
+    _cache.doneWith(pk->headkey);
+    pk->wst = WS_BODY;   
   else if (pk->wst == WS_BODY) {
-    if (nbytes > 0)     // not EOF
+    _cache.doneWith(pk->bodykey);
+    if (nbytes > 0) {    // not EOF
       pk->tr_offset += nbytes;
-    else
-      pk->wst = WS_UNO; // TODO
+      
+      pk->bodykey = 
+    } else {
+      pk->wst = WS_UNO;  // EOF
+    }
   }
-  else pk->wst = WS_UNO;  //  else if (pk->wst == WS_FOOTER) pk->wst = WS_DONE;
+  else pk->wst = WS_UNO;  // TOTO: else if (pk->wst == WS_FOOTER) pk->wst = WS_DONE;
 
   // go on writing
-  return svr_http_write(pk); //  return EHTTP_OK;
+  return svr_http_write(pk);
 }
 
 
@@ -428,16 +430,10 @@ ErrHTTP svr_http_write(HPKG * &pk) {
     }
   } // END 404
   else if (pk->hsn == N_200) { // BEGIN 200
+
     if (DBGL >= 5) printf("[svr_http_write] hsn=200, vern = %d, wst = %d, hfd=%d, offs=%d \n", pk->vern, pk->wst, pk->hfd, pk->tr_offset);
-    if (pk->wst == WS_SLINE) {
-      // HTTP/1.* 200 OK
-      IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_write_aio, pk, _1, _2, _3));
-      IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
-      IOCallback    * ioCB  = new IOCallback(okCB, errCB, cn->cfd);  // PALL
-      int nret = aio_write(cn->cfd, static_cast<void *> (_sline_200[pk->vern]), 16, 0, ioCB);
-      if (nret != 0) return svr_http_final(pk);
-    }
-    else if (pk->wst == WS_HEAD) {
+    
+    if (pk->wst == WS_HEAD) {
       IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_write_aio, pk, _1, _2, _3));
       IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
       IOCallback    * ioCB  = new IOCallback(okCB, errCB, cn->cfd); ////
@@ -446,11 +442,7 @@ ErrHTTP svr_http_write(HPKG * &pk) {
       if (nret != 0) return svr_http_final(pk);
     }
     else if (pk->wst == WS_BODY) {
-
-      printf("writing body...\n");
-
       if (pk->enc == TE_IDE) { // TODO: check in fetch_aio
-	
 	// get cbody
 	
 	// cache not hitted
@@ -513,6 +505,9 @@ ErrHTTP svr_http_final(HPKG * &pk) {
   if (DBGL >= 3) assert(pk != NULL);
   if (DBGL >= 3) assert(pk->cpn != NULL);
 
+  _cache.doneWith(pk->headkey);
+  _cache.doneWith(pk->bodykey);
+  
   Conn * & cn = *(pk->cpn);
   if (DBGL >= 5) printf("[svr_http_final] hpkg = %x, cn = %x, cn->cst = %d\n", pk, cn, cn->cst);
   delete pk; 
