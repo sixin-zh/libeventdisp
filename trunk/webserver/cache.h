@@ -16,13 +16,90 @@
 #define LIBEVENTDISP_CACHE_H_
 
 #include <cstddef>
+#include <cstring>
+#include <string>
+#include <list>
 #include <tr1/unordered_map>
 #include <tr1/functional>
-#include <list>
+
+#include <boost/functional/hash.hpp>
 
 #include "fast_fifo.h"
 
 namespace nyu_libedisp_webserver {
+union IntChar {
+  uint32_t intVal;
+
+  struct {
+    char val1;
+    char val2;
+    char val3;
+    char val4;
+  } charVal;
+};
+
+// A simple implementation for computing hash of the contents of a char *.
+// Note: only the first MAX_LEN_TO_HASH characters are computed into the hash.
+struct HashCharPtr {
+  static const size_t MAX_LEN_TO_HASH = 16;
+  static const char PADDING = 0;
+  static const size_t MODULUS_MASK = 0x3;
+  
+  size_t operator()(const char *c) const {
+    const size_t len = strlen(c);
+    size_t charsHashed = 0;
+    size_t hashSeed = 0;
+    IntChar val;
+    
+    while (charsHashed < MAX_LEN_TO_HASH && charsHashed < len) {
+      size_t toCopy = (len - charsHashed) & MODULUS_MASK;
+
+      switch (toCopy) {
+        case 0:
+          // This is actully 4, actual value of toCopy before masked cannot
+          // be 0, since it will never pass the condition charsHashed < len
+          val.charVal.val1 = c[charsHashed++];
+          val.charVal.val2 = c[charsHashed++];
+          val.charVal.val3 = c[charsHashed++];
+          val.charVal.val4 = c[charsHashed++];
+          break;
+
+        case 1:
+          val.charVal.val1 = c[charsHashed++];
+          val.charVal.val2 = PADDING;
+          val.charVal.val3 = PADDING;
+          val.charVal.val4 = PADDING;
+          break;
+
+        case 2:
+          val.charVal.val1 = c[charsHashed++];
+          val.charVal.val2 = c[charsHashed++];
+          val.charVal.val3 = PADDING;
+          val.charVal.val4 = PADDING;
+          break;
+
+        case 3:
+          val.charVal.val1 = c[charsHashed++];
+          val.charVal.val2 = c[charsHashed++];
+          val.charVal.val3 = c[charsHashed++];
+          val.charVal.val4 = PADDING;
+          break;
+      }
+
+      boost::hash_combine(hashSeed, val.intVal);
+    }
+
+    return hashSeed;
+  }
+};
+
+// A simple functional object for testing string equality
+struct EqCharPtr {
+  size_t operator()(const char *lhs, const char *rhs) const {
+    return (static_cast<size_t>(strcmp(lhs, rhs)) == 0);
+  }
+};
+
 struct CacheData {
   const char *data;
   const size_t size;
@@ -127,9 +204,13 @@ class Cache {
 
     // Creates a new cache entry
     CacheEntry(const char *name, const char *data, size_t size);
+
+    // Deallocates the name & data field of this object.
+    static void deallocate(CacheEntry &entry);
   };
 
-  typedef std::tr1::unordered_map<const char *, CacheEntry> CacheMap;
+  typedef std::tr1::unordered_map<const char *, CacheEntry,
+                                  HashCharPtr, EqCharPtr> CacheMap;
   
   const size_t sizeQuota_;
   size_t currentSize_;
