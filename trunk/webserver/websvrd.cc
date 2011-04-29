@@ -49,9 +49,12 @@ void svr_stop() {
 
 /* Entrance */
 int main(int argc, char **argv) {
+
   Dispatcher::init(2,false);
+
   svrC = NULL; 
   svr_start(); 
   return 0;
+
 }
 
