@@ -29,7 +29,7 @@ enum HttpST {
 /* }; */
 
 enum HttpWST {
-  WS_SLINE,
+  //  WS_SLINE,
   WS_HEAD,        // TODO: combine with sline 
   WS_BODY,
   WS_UNO, // UNKNOWN
@@ -52,10 +52,8 @@ enum ErrHTTP {
   EHTTP_FINAL, EHTTP_FINAL_AIO,
 };
 
-
 struct charn {
-  char * p; size_t n;
-  bool   cached;
+  char * p; size_t n; bool cached;
   charn() { p = NULL; n = 0; cached = false; }
   ~charn() { if ((p!=NULL)&&(!cached)) delete[] p; }
 };
@@ -75,17 +73,16 @@ struct HPKG {
   struct charn    uri;  // uri
   struct charn    host; // TODO
 
-  struct charn    chead;
-  struct charn    cbody;
-  struct charn    cfooter;
+  struct charn    chead;  char * headkey;
+  struct charn    cbody;  char * bodykey;
+  //  struct charn    cfooter;
 
-  int hfd;  // at most one fd (for local file) per hpkg
+  int hfd;  // at most open one fd (for local file) per hpkg
+
   off_t    tr_offset; // nbytes read/writtern
   size_t   tr_nbytes; // total size
   time_t   tr_current_time;
-  time_t   tr_last_modify_time;
-
-  // TODO: MIME TYPE
+  time_t   tr_last_modify_time; // TODO: MIME TYPE
 
   Conn **  cpn;
 
