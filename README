@@ -2,6 +2,7 @@
 Requirements:
 1. Linux kernel version >= 2.6 or the aio library.
 2. pthreads library.
+3. C++ Boost library (http://www.boost.org/).
 
 ================================================================================
 Building the shared library:
