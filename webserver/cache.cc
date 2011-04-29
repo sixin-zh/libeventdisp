@@ -7,6 +7,17 @@ using std::make_pair;
 using std::pair;
 using std::list;
 
+namespace {
+const char* strCpy(const char* str) {
+  size_t size = strlen(str);
+  char *copy = new char[size]();
+  strncpy(copy, str, size);
+  copy[size] = '\0';
+  
+  return copy;
+}
+} //namespace
+
 namespace nyu_libedisp_webserver {
 CacheData::CacheData(const char *data, size_t size, bool isCached) :
     data(data), size(size), isCached(isCached) {
@@ -22,6 +33,14 @@ Cache::CacheEntry::CacheEntry(const char *name, const char *data, size_t size) :
     freeListRef(NULL), isReserved(false) {
 }
 
+void Cache::CacheEntry::deallocate(CacheEntry &entry) {
+  free(const_cast<char *>(entry.data));
+  delete[] entry.name;
+
+  entry.data = NULL;
+  entry.name = NULL;
+}
+
 Cache::Cache(size_t sizeQuota) : sizeQuota_(sizeQuota), currentSize_(0) {
 }
 
@@ -29,8 +48,8 @@ Cache::~Cache() {
   for (CacheMap::iterator iter = cacheMap_.begin();
        iter != cacheMap_.end(); ++iter) {
     CacheEntry &entry = iter->second;
-    free(const_cast<char *>(entry.data));
-
+    CacheEntry::deallocate(entry);
+    
     FastFIFONode<CacheEntry> *node = entry.freeListRef;
     if (node != NULL) {
       freeList_.removeNode(node);
@@ -45,8 +64,10 @@ Cache::~Cache() {
 
 bool Cache::put(const char *key, const char *buf, size_t size) {
   bool ret = false;
+
+  const char *keyCopy = strCpy(key);
   pair<CacheMap::iterator, bool> result =
-      cacheMap_.insert(make_pair(key, CacheEntry(key, buf, size)));
+      cacheMap_.insert(make_pair(keyCopy, CacheEntry(keyCopy, buf, size)));
 
   if (result.second) {
     currentSize_ += size;
@@ -72,6 +93,8 @@ bool Cache::put(const char *key, const char *buf, size_t size) {
       entry.isReserved = false;
       ret = true;
     }
+
+    delete[] keyCopy;
   }
   
   return ret;
@@ -112,8 +135,10 @@ bool Cache::get(const char *key, CacheCallback *callback) {
 
 bool Cache::reserve(const char *key) {
   bool ret = false;
+
+  const char *keyCopy = strCpy(key);
   pair<CacheMap::iterator, bool> result =
-      cacheMap_.insert(make_pair(key, CacheEntry(key)));
+      cacheMap_.insert(make_pair(keyCopy, CacheEntry(keyCopy)));
 
   if (result.second) {
     ret = true;
@@ -125,6 +150,8 @@ bool Cache::reserve(const char *key) {
       entry.isReserved = true;
       ret = true;
     }
+
+    delete[] keyCopy;
   }
 
   return ret;
@@ -180,11 +207,12 @@ void Cache::cleanup(size_t space) {
   CacheEntry *entry = NULL;
 
   // Try to delete data from the free list
-  while (freeList_.pop(&entry) && spaceFreed < space) {
+  while (spaceFreed < space && freeList_.pop(&entry)) {
     assert(entry->refCount == 0);
-    free(const_cast<char *>(entry->data));
     spaceFreed += entry->size;
     cacheMap_.erase(entry->name);
+
+    CacheEntry::deallocate(*entry);
   }
 
   currentSize_ -= spaceFreed;
