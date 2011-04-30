@@ -98,18 +98,26 @@ struct HPKG {
 };
 
 // call-forward
-ErrHTTP svr_http_read (HPKG * &);
-ErrHTTP svr_http_parse(HPKG * &);
-ErrHTTP svr_http_fetch(HPKG * &);
-ErrHTTP svr_http_write(HPKG * &);
-ErrHTTP svr_http_final(HPKG * &);
+ErrHTTP svr_http_read  (HPKG * &);
+ErrHTTP svr_http_parse (HPKG * &);
+ErrHTTP svr_http_fetch (HPKG * &);
+ErrHTTP svr_http_header(HPKG * &);
+ErrHTTP svr_http_body  (HPKG * &);
+ErrHTTP svr_http_final (HPKG * &);
+
+#include "cache.h"
+using nyu_libedisp_webserver::Cache;
+using nyu_libedisp_webserver::CacheData;
+using nyu_libedisp_webserver::CacheCallback;
 
 // call-back
-ErrHTTP svr_http_read_aio (HPKG * &, int &, void *, const size_t &);
-ErrHTTP svr_http_parse_aio(HPKG * &, int &, void *, const size_t &);
-ErrHTTP svr_http_fetch_aio(HPKG * &, int &, void *, const size_t &);
-ErrHTTP svr_http_write_aio(HPKG * &, int &, void *, const size_t &);
-ErrHTTP svr_http_final_aio(HPKG * &, int &, const int &);
+ErrHTTP svr_http_read_aio  (HPKG * &, int &, void *, const size_t &);
+ErrHTTP svr_http_parse_aio (HPKG * &, int &, void *, const size_t &);
+ErrHTTP svr_http_header_rio(HPKG * &, int &, void *, const size_t &);
+ErrHTTP svr_http_header_wio(HPKG * &, const CacheData &);
+ErrHTTP svr_http_body_rio  (HPKG * &, int &, void *, const size_t &);
+ErrHTTP svr_http_body_wio  (HPKG * &, const CacheData &);
+ErrHTTP svr_http_final_aio (HPKG * &, int &, const int &);
 
 
 #endif
