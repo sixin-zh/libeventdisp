@@ -92,7 +92,7 @@ struct HPKG {
   }
 
   ~HPKG() {
-    if (hfd != -1)  close(hfd);
+    if (hfd != -1) close(hfd);
   }
   
 };
