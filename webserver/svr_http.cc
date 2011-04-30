@@ -5,7 +5,6 @@
 #include <svr_tcp_ip.h>
 
 #define CRLF "\r\n"
-
 //#define MAXWBC 5      // max char for encoding hex length (not including '\n')
 
 #include <dispatcher.h>
@@ -488,7 +487,7 @@ ErrHTTP svr_http_body(HPKG * &pk) {
     bool iscac = _cache.get(pk->bodykey.p, cCB);
     if (DBGL >= 2) assert(iscac == true); // return svr_http_final(pk);
 	
-    if (pk->cbody.p == NULL) { pk->cbody.p = (char *) malloc(MAXWB); }
+    pk->cbody.p = (char *) malloc(MAXWB);
     if (pk->hfd == -1) pk->hfd = open(pk->uri.p, O_RDONLY); // ! blocking
     
     IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_body_pio, pk, _1, _2, _3));
