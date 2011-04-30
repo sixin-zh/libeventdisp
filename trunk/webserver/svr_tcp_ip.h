@@ -69,7 +69,7 @@ ErrConn svr_conn_close  (Conn * &);            // close connection
 
 // TODO: KeepAlive
 #define MaxKeepAlive 100
-#define KeepAliveTimeout 1  // 15
+#define KeepAliveTimeoutUSEC 15  // 15
 
 #define MaxCSL  512   // max backlog: SOMAXCONN [socket dependent]
 
