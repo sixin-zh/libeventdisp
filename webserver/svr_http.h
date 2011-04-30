@@ -51,7 +51,7 @@ enum ErrHTTP {
 struct charn {
   char * p; size_t n; bool cached;
   charn() { p = NULL; n = 0; cached = false; }
-  ~charn() { if ((p!=NULL)&&(!cached)) delete[] p; }
+  ~charn() { if ((p!=NULL)&&(!cached)) free(p); }
 };
 
 // Http Package
@@ -80,7 +80,7 @@ struct HPKG {
 
   Conn **  cpn;                 // hpkg -> conn
 
-  HPKG() { cpn = NULL; hst = HS_UNKNOWN; enc = TE_UNO; vern = 1; hfd = -1;}
+  HPKG() { cpn = NULL; hst = HS_UNKNOWN; enc = TE_UNO; vern = 1; hfd = -1; tr_offset = 0; }
 
   HPKG(Conn * & cn) {
     cpn = &cn;
@@ -88,7 +88,7 @@ struct HPKG {
     ++cn->pkgc;
     pthread_mutex_unlock(&(cn->pkgl));
     hst = HS_UNKNOWN; enc = TE_UNO; 
-    vern = 1; hfd = -1;
+    vern = 1; hfd = -1; tr_offset = 0;
   }
 
   ~HPKG() {

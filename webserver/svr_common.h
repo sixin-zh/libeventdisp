@@ -2,6 +2,8 @@
 #define ED_SVR_COMMON_H_
 
 #include <stdio.h>
+#include <stdlib.h>
+
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
@@ -10,7 +12,7 @@
 
 
 // server debug (verbal) level 0,1,2,3,4,...
-#define DBGL 5
+#define DBGL 6
 #include <assert.h>
 #include <errno.h>
 
