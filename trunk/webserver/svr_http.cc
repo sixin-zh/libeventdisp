@@ -4,8 +4,8 @@
 #include <svr_http.h>
 #include <svr_tcp_ip.h>
 
-// #define CTLR "\n"
-// including '\0'
+#define CRLF "\r\n"
+
 //#define MAXWBC 5      // max char for encoding hex length (not including '\n')
 
 #include <dispatcher.h>
@@ -49,12 +49,12 @@ ErrHTTP svr_http_read(HPKG * &pk) {
 
   // read header, assume no body, footer...
   charn & _tmp = pk->chead;
-  if (_tmp.p == NULL) { _tmp.n = 0; _tmp.p = new char[MAXRH]; }
+  if (_tmp.p == NULL) { _tmp.n = 0; _tmp.p = (char *) malloc(MAXRH); }
   memset(_tmp.p, 0, sizeof(char)*MAXRH);
 
   IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_parse_aio, pk, _1, _2, _3));
   IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
-  IOCallback    * ioCB  = new IOCallback(okCB, errCB, cn->cfd); // PALL or RReadTaskID ?
+  IOCallback    * ioCB  = new IOCallback(okCB, errCB, cn->cfd); // PALL,, or RReadTaskID ?
 
   int iret = aio_read(cn->cfd, static_cast<void *> (_tmp.p), MAXRH, 0, ioCB); // end with '\0' 
   if (iret != 0) return svr_http_final(pk);
@@ -78,49 +78,51 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_R)) return svr_http_final(pk);
 
   pk->hst = HS_PARSING;
-  char * ph = (char *)  pk->chead.p; // head
+
+  char * ph = pk->chead.p; // head
   char * pe = ph + pk->chead.n - 1;  // end
+  
   while (ph <= pe) {
     // parse line by line
-    if (DBGL >= 6) printf("[svr_http_parse] line (%s)\n", ph);
-    char * pt = strchr(ph, '\n');
+    char * pt = strstr(ph, CRLF);
     if (pt==NULL) pt = pe;
+    if (DBGL >= 6) { char _bk = *pt; *pt = '\0'; printf("[svr_http_parse] line [%s]\n", ph); *pt = _bk; }
 
     // GET
-    if (strncmp(ph,"GET ",4)==0) { // "GET " + URI + ' ' + "HTTP/1.*"
+    if (strncmp(ph,"GET ",4) == 0) { // "GET " + URI + ' ' + "HTTP/1.*"
 
       // create new hpkg
       HPKG * gk = new HPKG(cn);
 
       // met
-      if (DBGL >= 6) printf("[svr_http_parse] met (%s)\n", ph);
       gk->met.n = 3;
-      gk->met.p = new char[gk->met.n+1]; // end with '\0'
+      gk->met.p = (char *) malloc(gk->met.n+1); // end with '\0'
       strcpy(gk->met.p, "GET");
+      //      if (DBGL >= 6) printf("[svr_http_parse] met: %s [%s]\n", gk->met.p, ph);
 
       // uri
       ph = ph + 4;  // URI + ' ' + "HTTP/1.*"
-      if (DBGL >= 6) printf("[svr_http_parse] uri (%s)\n", ph);
       char * ps = strchr(ph, ' ');
       if (*ph == '/') ++ph; // skip /
       if ((ps != NULL) && (ps < pt)) {
 	gk->uri.n = ps-ph;
-	gk->uri.p = new char[gk->uri.n+1]; // end with '\0'
+	gk->uri.p = (char *) malloc(gk->uri.n+1); // end with '\0'
 	memcpy(gk->uri.p, ph, gk->uri.n); 
 	gk->uri.p[gk->uri.n] = '\0';
+	//if (DBGL >= 6) printf("[svr_http_parse] uri: %s [%s]\n", gk->uri.p, ph);
       
 	// ver
 	ph = ps + 1;
-	if (DBGL >= 6) printf("[svr_http_parse] ver (%s)\n", ph);
 	if (ph <= pt) {
 	  gk->ver.n = pt-ph;
-	  gk->ver.p = new char[gk->ver.n+1]; // end with '\0'
+	  gk->ver.p = (char *) malloc(gk->ver.n+1); // end with '\0'
 	  memcpy(gk->ver.p, ph, gk->ver.n);
 	  gk->ver.p[gk->ver.n] = '\0';
 	}
+	//if (DBGL >= 6) printf("[svr_http_parse] ver: %s [%s]\n", gk->ver.p, ph);
       } // else bad GET request (no uri or no ver)
 
-      if (DBGL >= 6) printf("[svr_http_parse] endline (met=%s, ver=%s, uri=%s)\n", pk->met.p, pk->ver.p, pk->uri.p);
+      if (DBGL >= 6) printf("[svr_http_parse] met=%s, ver=%s, uri=%s\n", gk->met.p, gk->ver.p, gk->uri.p);
 
       // fetch GET
       bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, gk), CacheTaskID)); //// IN SERIAL !
@@ -167,25 +169,28 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
 // FETCH; PUT; CANCEL [CacheTaskID]
 ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
+  if (DBGL >= 4) printf("[svr_http_header_rio] hpkg=%x\n", pk);
+  if (DBGL >= 3) assert(pk != NULL);
+
   pk->hst = HS_FETCHING;
   pk->wst = WS_HEAD;
 
   { // open local file
-    pk->hfd = open(pk->uri.p, O_RDONLY); // ! blocking
+    if (pk->hfd == -1) pk->hfd = open(pk->uri.p, O_RDONLY); // ! blocking
 
     if (pk->hfd < 0) { // 404
 
       pk->hsn = N_404;
 
       // fetch
-      char * _tmp = (char*) malloc (24);
-      strncpy(_tmp, _sline_404[pk->vern], 23);
+      char * _tmp = (char*) malloc(24);
+      strncpy(_tmp, _sline_404[pk->vern], 24);
       pk->chead.p = _tmp; pk->chead.n = 23; pk->chead.cached = true;
       // put
       bool isput = _cache.put(pk->headkey.p, pk->chead.p, pk->chead.n);
       if (DBGL >= 3) assert(isput == true);
 
-    } // end 404
+    }
     else {             // 200
 
       pk->hsn = N_200;
@@ -204,7 +209,7 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
       _tmp.p = (char*) malloc (MAXWH); _tmp.n = MAXWH-1; _tmp.cached = true;
       memset(_tmp.p, 0, sizeof(char)*MAXWH);
       // status line
-      strncpy(_tmp.p, _sline_200[pk->vern], 16);
+      strncpy(_tmp.p, _sline_200[pk->vern], 17);
       // head line
       char hline[MAXWHL];
       memset(hline, 0, sizeof(char)*MAXWHL);
@@ -235,10 +240,10 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
 	strncat(_tmp.p, hline, MAXWHL-1);
 	pk->enc = TE_IDE;
       }
-      strcat(_tmp.p, "\n"); // _tmp.n = strlen(_tmp.p);
+      strcat(_tmp.p, "\n"); _tmp.n = strlen(_tmp.p);
       // end of head
 
-      if (DBGL >= 5) printf("[svr_http_fetch] hpkg=%x, head[%d] = \n%s\n", pk, pk->chead.n, pk->chead.p);
+      if (DBGL >= 5) printf("[svr_http_header_rio] hpkg=%x, head[%d] = \n%s\n", pk, pk->chead.n, pk->chead.p);
 
       // PUT HEAD
       bool isput = _cache.put(pk->headkey.p, pk->chead.p, pk->chead.n);
@@ -255,10 +260,13 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
 // [CacheTaskID]
 ErrHTTP svr_http_header_to_body_aio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
+  if (DBGL >= 4) printf("[svr_http_header_to_body_aio] hpkg=%x, hsn=%d\n", pk,  pk->hsn);
+  if (DBGL >= 3) assert(pk != NULL);
+
   pk->hst = HS_UNKNOWN;
   pk->wst = WS_HEAD;
 
-  //  if (pk->headkey.p != NULL){  _cache.doneWith(pk->headkey.p); delete[] pk->headkey.p; pk->headkey.p = NULL; }
+  // if (pk->headkey.p != NULL){  _cache.doneWith(pk->headkey.p); free(pk->headkey.p); pk->headkey.p = NULL; }
 
   // body
   if (pk->hsn == N_200)
@@ -283,9 +291,9 @@ ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
 
   // hsn
   const char * loc = cd.data+9;
-  if (strncmp(loc, "200", 3))
+  if (strncmp(loc, "200", 3)==0)
     pk->hsn = N_200;
-  else if (strncmp(loc, "404", 3))
+  else if (strncmp(loc, "404", 3)==0)
     pk->hsn = N_404;
   else
     pk->hsn = N_UNO;
@@ -304,6 +312,9 @@ ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
 // Get Head [CacheTaskID]
 ErrHTTP svr_http_header(HPKG * &pk) {
   
+  if (DBGL >= 4) printf("[svr_http_header] hpkg=%x\n", pk);
+  if (DBGL >= 3) assert(pk != NULL);
+
   Conn * &cn = (*pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
 
@@ -312,8 +323,8 @@ ErrHTTP svr_http_header(HPKG * &pk) {
 
   CacheCallback * cCB = new CacheCallback(BIND(svr_http_header_wio, pk, _1));
   
-  if (pk->headkey.p == NULL) { pk->headkey.p = new char[MAXKEYS]; }
-  strncpy(pk->headkey.p, pk->uri.p, MAXKEYS-1);
+  if (pk->headkey.p == NULL) { pk->headkey.p = (char *) malloc(MAXKEYS); }
+  strncpy(pk->headkey.p, pk->uri.p, MAXKEYS);
   pk->headkey.n = pk->uri.n; // strlen(pk->headkey.p);
   if (!_cache.get(pk->headkey.p, cCB)) {
     bool rsvp = _cache.reserve(pk->headkey.p);
@@ -330,6 +341,9 @@ ErrHTTP svr_http_header(HPKG * &pk) {
 
 // 400 ERROR [CacheTaskID]
 ErrHTTP svr_http_write_400(HPKG * &pk) {
+
+  if (DBGL >= 3) assert(pk != NULL);
+  if (DBGL >= 4) printf("[svr_http_write_400] hpkg=%x\n", pk);
   
   pk->hst = HS_WRITING;
   pk->wst = WS_HEAD;
@@ -380,8 +394,9 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
 
 // GOT BODY [CacheTaskID]
 ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
-  if (DBGL >= 4) printf("[svr_http_fetch_aio] (hpkg=%x, nbytes=%d)\n", pk, cd.size);
+
   if (DBGL >= 3) assert(pk != NULL);
+  if (DBGL >= 4) printf("[svr_http_body_wio] hpkg=%x, nbytes=%d, data=%s\n", pk, cd.size, cd.data);
 
   Conn * &cn = (*pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
@@ -416,11 +431,11 @@ ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
 // WRITE DONE [CacheTaskID]
 ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
-  if (DBGL >= 4) printf("[svr_http_write_aio] (hpkg=%x, wst=%d)\n", pk, pk->wst);
+  if (DBGL >= 4) printf("[svr_http_body_rio] (hpkg=%x, wst=%d)\n", pk, pk->wst);
 
   if (pk->wst == WS_BODY) {
-    if (pk->bodykey.p != NULL) _cache.doneWith(pk->bodykey.p);
     if (nbytes > 0) {    // ! EOF
+      if (pk->bodykey.p != NULL) _cache.doneWith(pk->bodykey.p);
       pk->tr_offset += nbytes;
       return svr_http_body(pk); // continue writing
     } else {
@@ -436,9 +451,11 @@ ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
 
 ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
+  if (DBGL >= 4) printf("[svr_http_body_pio] hpkg=%x, put key=%s, val=%s\n", pk, pk->bodykey.p, buf);
+
   bool iscac = _cache.put(pk->bodykey.p, static_cast<const char *> (buf), nbytes); 
   if (DBGL >= 2) assert(iscac == true); 
-  pk->chead.cached = iscac;
+  pk->cbody.cached = iscac;
 
   return EHTTP_OK;
 }
@@ -448,7 +465,7 @@ ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
 ErrHTTP svr_http_body(HPKG * &pk) {
   
   if (DBGL >= 3) assert(pk != NULL);
-  if (DBGL >= 4) printf("[svr_http_write] (hpkg=%x, wst=%d)\n", pk, pk->wst);
+  if (DBGL >= 4) printf("[svr_http_body] (hpkg=%x, wst=%d)\n", pk, pk->wst);
 
   Conn * &cn = (*pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { printf("[svr_http_write] conn error\n"); return svr_http_final(pk); }
@@ -456,32 +473,33 @@ ErrHTTP svr_http_body(HPKG * &pk) {
   pk->hst = HS_FETCHING;
   pk->wst = WS_BODY;
   
-  if ((pk->hsn = N_200) && (pk->enc == TE_IDE)) {
-      // new key
-      if (pk->bodykey.p == NULL) { pk->bodykey.p = new char[MAXKEYS]; pk->bodykey.cached = false; }
-      pk->bodykey.n = snprintf(pk->bodykey.p, MAXKEYS, "%s#%d", pk->uri.p, pk->tr_offset);
-      if (DBGL >= 3) printf("[200 bodykey]: %s [%d]\n", pk->bodykey.p, pk->bodykey.n);
+  //  if (pk->hsn == N_200) { // pk->enc == TE_IDE
+    // new key
+  if (pk->bodykey.p == NULL) { pk->bodykey.p = (char *) malloc(MAXKEYS); pk->bodykey.cached = false; }
+  pk->bodykey.n = snprintf(pk->bodykey.p, MAXKEYS, "%s#%d", pk->uri.p, pk->tr_offset);
+  if (DBGL >= 3) printf("[200 new body key]: %s [%d]\n", pk->bodykey.p, pk->bodykey.n);
 
-      // get
-      CacheCallback * cCB = new CacheCallback(BIND(svr_http_body_wio, pk, _1));
-      if (!_cache.get(pk->bodykey.p, cCB)) {
-	bool rsvp = _cache.reserve(pk->bodykey.p);
-	if (DBGL >= 2) assert(rsvp == true);
-	cCB = new CacheCallback(BIND(svr_http_body_wio, pk, _1));
-	bool iscac = _cache.get(pk->bodykey.p, cCB);
-	if (DBGL >= 2) assert(iscac == true); // return svr_http_final(pk);
+  // get
+  CacheCallback * cCB = new CacheCallback(BIND(svr_http_body_wio, pk, _1));
+  if (!_cache.get(pk->bodykey.p, cCB)) {
+    bool rsvp = _cache.reserve(pk->bodykey.p);
+    if (DBGL >= 2) assert(rsvp == true);
+    cCB = new CacheCallback(BIND(svr_http_body_wio, pk, _1));
+    bool iscac = _cache.get(pk->bodykey.p, cCB);
+    if (DBGL >= 2) assert(iscac == true); // return svr_http_final(pk);
 	
-	if (pk->cbody.p == NULL) { pk->cbody.p = new char[MAXWB]; }
-
-	IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_body_pio, pk, _1, _2, _3));
-	IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
-	IOCallback    * ioCB  = new IOCallback(okCB, errCB, CacheTaskID); // [CacheTaskID]
-	int nret = aio_read(pk->hfd, static_cast<void *> (pk->cbody.p), MAXWB, pk->tr_offset, ioCB);
-	if (nret != 0) return svr_http_final(pk);
-      }
-  } else {
-    return svr_http_final(pk);
+    if (pk->cbody.p == NULL) { pk->cbody.p = (char *) malloc(MAXWB); }
+    if (pk->hfd == -1) pk->hfd = open(pk->uri.p, O_RDONLY); // ! blocking
+    
+    IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_body_pio, pk, _1, _2, _3));
+    IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
+    IOCallback    * ioCB  = new IOCallback(okCB, errCB, CacheTaskID); // [CacheTaskID]
+    int nret = aio_read(pk->hfd, static_cast<void *> (pk->cbody.p), MAXWB, pk->tr_offset, ioCB);
+    if (nret != 0) return svr_http_final(pk);
   }
+    //} // else {
+  //   return svr_http_final(pk);
+  // }
 
   return EHTTP_OK;
 }

@@ -1,6 +1,6 @@
 
 #include <pthread.h>
-#define KASLEEPTIME_U 10 // keepalive sleeptime (usec)
+#define KASLEEPTIME_U 100 // keepalive sleeptime (usec)
 
 #include <dispatcher.h>
 using nyu_libeventdisp::Dispatcher;
