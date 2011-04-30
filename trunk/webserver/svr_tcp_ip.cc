@@ -129,7 +129,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   
   // keepalive: set BLOCKING and I/O TIMEOUT
   if (socketSetBlockingAndTimeout(connfd) < 0) {
-    if (DBGL >= 2) printf("[svr_conn_accept]  fail to set nonblicking and timeout\n"); // when fd or accept limit exceeded
+    if (DBGL >= 2) printf("[svr_conn_accept] fail to set nonblicking and timeout\n"); // when fd or accept limit exceeded
     return ERRCONN_AC;
   }
 
@@ -152,7 +152,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
 
   //  if (DBGL >= 5) printf("[svr_conn_accept] push ptr: %x\n",  &pn);
   //if (DBGL >= 5) printf("[svr_conn_accept] pushed ptr: %x\n", &(cn->csp.back()));
-  if (DBGL >= 5) printf("[svr_conn_accept] cn=%x, pn=%x, hpkg=%x\n", cn, &(*(pk->cpn)), pk);
+  if (DBGL >= 5) printf("[svr_conn_accept] svr=%x, peer=%x, hpkg=%x\n", cn, *(pk->cpn), pk);
 
   // read header
   if (svr_http_read(pk) == EHTTP_READ) return ERRCONN_AC;
@@ -205,7 +205,7 @@ ErrConn svr_conn_connect(Conn * &pn) {
 // if conn is not closed (by client or server), then close it and all sub-conns ..
 ErrConn svr_conn_close(Conn * &cn) {
 
-  if (DBGL >= 4) printf("[svr_conn_close] close cn=%x\n", &cn);
+  if (DBGL >= 4) printf("[svr_conn_close] close cn=%x\n", cn);
   if (DBGL >= 1) assert(cn != NULL);
   
   if (cn == NULL) return ERRCONN_CO; // ! this should never happen for websvrd
@@ -229,7 +229,7 @@ ErrConn svr_conn_close(Conn * &cn) {
   delete cn; cn = NULL;
 
   // remove from parent pool
-  if (DBGL >= 4) printf("[svr_conn_close] remove from parent pool (ptr addr: %x)\n", &pn);
+  if (DBGL >= 4) printf("[svr_conn_close] svr pool remove pn=%x\n", pn);
   if ((&pn != NULL) && (pn != NULL)) pn->csp.remove(cn);
   
       // // close all sub connections of cn (if closing) TODO: use another list for closing

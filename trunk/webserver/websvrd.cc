@@ -31,6 +31,7 @@ void svr_start() {
 
     } else { 
       // accept new conn
+      if (DBGL >= 4) { printf("[svr_start] pool size = %d\n", svrC->csp.size()); fflush(stdout); }
       svr_conn_accept(svrC,peerC); /* assume no concurrent accept */
     }
   } // end loop
@@ -50,7 +51,7 @@ void svr_stop() {
 /* Entrance */
 int main(int argc, char **argv) {
 
-  Dispatcher::init(4,false);
+  Dispatcher::init(4,true);
 
   svrC = NULL; 
   svr_start(); 
