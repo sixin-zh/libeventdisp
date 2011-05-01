@@ -1,6 +1,6 @@
 
 #include <pthread.h>
-#define KASLEEPTIME_U 100 // keepalive sleeptime (usec)
+// #define KASLEEPTIME_U 100 // keepalive sleeptime (usec)
 
 #include <dispatcher.h>
 using nyu_libeventdisp::Dispatcher;
@@ -22,18 +22,18 @@ void svr_start() {
 
   // loop
   while (svrC!=NULL) {
-    if (svrC->csp.size() > MaxKeepAlive) {
-      // keepalive (polling) // TODO: asyn.
+    // if (svrC->csp.size() > MaxKeepAlive) {
+    //   // keepalive (polling) // TODO: asyn.
       
-      if (DBGL >= 2) printf("max keepalive connections exceeded .. close and sleep...\n");
+    //   if (DBGL >= 2) printf("max keepalive connections exceeded .. close and sleep...\n");
 
-      usleep(KASLEEPTIME_U);
+    //   usleep(KASLEEPTIME_U);
 
-    } else { 
+    // } else { 
       // accept new conn
-      if (DBGL >= 4) { printf("[svr_start] pool size = %d\n", svrC->csp.size()); fflush(stdout); }
-      svr_conn_accept(svrC,peerC); /* assume no concurrent accept */
-    }
+    // if (DBGL >= 4) { printf("[svr_start] pool size = %d\n", svrC->csp.size()); fflush(stdout); }
+    svr_conn_accept(svrC,peerC); /* assume no concurrent accept */
+      //    }
   } // end loop
 
   svr_stop();
