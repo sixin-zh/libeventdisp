@@ -31,12 +31,12 @@ enum HttpWST {
   WS_UNO,
 };
 
-// transfer-encoding
-enum TransEnc { 
-  TE_IDE, // IDENTITY
-  TE_CHU, // CHUNCKED
-  TE_UNO, // UNKNOWN
-};
+/* // transfer-encoding */
+/* enum TransEnc {  */
+/*   TE_IDE, // IDENTITY */
+/*   TE_CHU, // CHUNCKED */
+/*   TE_UNO, // UNKNOWN */
+/* }; */
 
 enum ErrHTTP {
   EHTTP_OK,    
@@ -60,9 +60,9 @@ struct HPKG {
   HttpSN   hsn;
   HttpST   hst;
   HttpWST  wst;
-  TransEnc enc;
+  //  TransEnc enc;
 
-  ssize_t         vern; // rep version (1 -> HTTP/1.1, 0 -> HTTP/1.0)
+  ssize_t         vern; // rep version (1 <- HTTP/1.1; 0 <- HTTP/1.0)
   struct charn    ver;  // req version
   struct charn    met;  // method
   struct charn    uri;  // uri
@@ -80,15 +80,21 @@ struct HPKG {
 
   Conn **  cpn;                 // hpkg -> conn
 
-  HPKG() { cpn = NULL; hst = HS_UNKNOWN; enc = TE_UNO; vern = 1; hfd = -1; tr_offset = 0; }
+  HPKG **  ppg;                 // parent
+  HPKG **  lcg;                 // last-child
+  HPKG **  nsg;                 // next-slibling
+
+  HPKG() { cpn = NULL; hst = HS_UNKNOWN; enc = TE_UNO; vern = 1; hfd = -1; tr_offset = 0; ppg = NULL; lcg = NULL; nsg = NULL; }
 
   HPKG(Conn * & cn) {
     cpn = &cn;
-    pthread_mutex_lock(&(cn->pkgl));
-    ++cn->pkgc;
-    pthread_mutex_unlock(&(cn->pkgl));
-    hst = HS_UNKNOWN; enc = TE_UNO; 
-    vern = 1; hfd = -1; tr_offset = 0;
+    //    pthread_mutex_lock(&(cn->pkgl));
+    //    ++cn->pkgc;
+    //    pthread_mutex_unlock(&(cn->pkgl));
+    hst = HS_UNKNOWN; // enc = TE_UNO; 
+    vern = 1; hfd = -1; 
+    tr_offset = 0; tr_nbytes = 0; 
+    ppg = NULL; lcg = NULL; nsg = NULL;
   }
 
   ~HPKG() {

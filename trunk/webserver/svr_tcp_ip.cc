@@ -39,7 +39,7 @@ int socketSetBlockingAndTimeout(int sockfd) {
   //  tv.tv_sec = KeepAliveTimeout;
   // setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (struct timeval *)&tv, sizeof(struct timeval)); // send blocking timeout
 
-  // nodelay
+  // // nodelay
   // int flag = 1;
   // ret = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*) &flag, sizeof (int));
   // if (ret < 0) return -1; //  printf("*****setsocket (fd=%d)  recv timeout ret = %d, errno = %d*****\n", sockfd, ret, errno);
