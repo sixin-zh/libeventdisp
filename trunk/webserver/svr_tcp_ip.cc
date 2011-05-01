@@ -138,7 +138,6 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   pn->cfd = connfd;
   pn->cst = CS_CONNECTED;
   pn->cpp = &cn; // conn -> parent conn
-  cn->csp.push_back(pn); // pooling
 
   // ip track
   if (DBGL >= 3) {
@@ -147,8 +146,11 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
     printf("[svr_conn_accept] new socket accetped: %d, %s:%d \n", connfd, inet_ntoa(cl_addr.sin_addr), ntohs(cl_addr.sin_port));
   }
 
-  // create HPKG (req)
-  HPKG * pk = new HPKG(cn->csp.back());
+  pthread_mutex_lock(&(cn->pkgl));
+  cn->csp.push_back(pn);                  // pooling
+  HPKG * pk = new HPKG(cn->csp.back());   // create HPKG (req)
+  printf("svr_http_accept] new pool size %d\n",cn->csp.size());
+  pthread_mutex_unlock(&(cn->pkgl));
 
   //  if (DBGL >= 5) printf("[svr_conn_accept] push ptr: %x\n",  &pn);
   //if (DBGL >= 5) printf("[svr_conn_accept] pushed ptr: %x\n", &(cn->csp.back()));
@@ -192,7 +194,12 @@ ErrConn svr_conn_connect(Conn * &pn) {
   // }
 
   pn->cst = CS_CONNECTED;
-  if (DBGL >= 2) printf("[svr_conn_connect] connected...\n");
+  // ip track
+  if (DBGL >= 3) {
+    struct sockaddr_in cl_addr; socklen_t cl_addrlen;
+    getsockname(pn->cfd,  (SVR_SA *) &cl_addr, &cl_addrlen);
+    printf("[svr_conn_connect] socket connected: %d, %s:%d \n", pn->cfd, inet_ntoa(cl_addr.sin_addr), ntohs(cl_addr.sin_port));
+  }
 
   return ERRCONN_OK;
 
@@ -229,8 +236,12 @@ ErrConn svr_conn_close(Conn * &cn) {
   delete cn; cn = NULL;
 
   // remove from parent pool
-  if (DBGL >= 4) printf("[svr_conn_close] svr pool remove pn=%x\n", pn);
-  if ((&pn != NULL) && (pn != NULL)) pn->csp.remove(cn);
+  if (DBGL >= 4) if ((&pn != NULL) && (pn != NULL)) printf("[svr_conn_close] svr pool remove pn=%x\n", pn);
+  if ((&pn != NULL) && (pn != NULL)) {
+    pthread_mutex_lock(&(pn->pkgl));
+    pn->csp.remove(cn);
+    pthread_mutex_unlock(&(pn->pkgl));
+  }
   
       // // close all sub connections of cn (if closing) TODO: use another list for closing
       // POOL<Conn*>::L::iterator itr = svrC->csp.begin();

@@ -48,7 +48,7 @@ struct Conn {
   POOL<Conn*>::L    csp;   // pool for child-connections
   Conn **           cpp;   // parent connection
 
-  pthread_mutex_t   pkgl;  // pkgs lock
+  pthread_mutex_t   pkgl;  // pkgs/pool lock
   size_t            pkgc;  // pkgs counter
 
   Conn() {
@@ -68,11 +68,11 @@ ErrConn svr_conn_connect(Conn * &);            // connect to another server
 ErrConn svr_conn_close  (Conn * &);            // close connection
 
 // TODO: KeepAlive
+#define MaxCSL  16   // max backlog: SOMAXCONN [socket dependent]
 #define MaxKeepAlive 100
 #define KeepAliveTimeoutUSEC 0
-#define KeepAliveTimeoutSEC 15
+#define KeepAliveTimeoutSEC 5
 
-#define MaxCSL  512   // max backlog: SOMAXCONN [socket dependent]
 
 // Notice: MaxKeepAlive,MaxCSL <= Max#FD
 
