@@ -4,10 +4,12 @@
 
 SVRD_INC_DIR = .
 SVRD_SRC_DIR = .
-SVRD_BIN_DIR = ./www
+SVRD_BIN_DIR = /var/www
 
 LIBEVENTDISP_INC_DIR = ../lib/inc
-LIBEVENTDISP_BIN_DIR = ../build
+LIBEVENTDISP_SSO_DIR = ../build
+LIBEVENTDISP_BIN_DIR = $(SVRD_BIN_DIR)/libsvrd
+
 
 INCFLAGS += -I$(LIBEVENTDISP_INC_DIR)
 LIBFLAGS += -L$(LIBEVENTDISP_BIN_DIR) -leventdisp -lpthread -lrt
@@ -16,9 +18,10 @@ CXXFLAGS += -g -Wall -Wextra
 TARGETS = websvrd
 
 .PHONY:
-all: 	cleana $(TARGETS) cleano start
-	@echo TODO: export LD_LIBRARY_PATH="$(LIBEVENTDISP_BIN_DIR)"
-	@echo Built OK ! 
+
+install: 	cleana migrate $(TARGETS) cleano start
+		@echo TODO: export LD_LIBRARY_PATH="$(LIBEVENTDISP_BIN_DIR)"
+		@echo Built OK ! 
 
 %.od:   $(SVRD_SRC_DIR)/%.cc 
 	@$(CXX) $(CXXFLAGS) $(INCFLAGS) $(LIBFLAGS) -I$(SVRD_INC_DIR) -c $< -o $@
@@ -40,3 +43,9 @@ cleano:
 cleana: 
 	-rm -f *.o* $(TARGETS)
 
+
+.PHONY: 
+migrate:
+	rm -fr $(LIBEVENTDISP_BIN_DIR)
+	mkdir  $(LIBEVENTDISP_BIN_DIR)
+	cp $(LIBEVENTDISP_SSO_DIR)/*.so $(LIBEVENTDISP_BIN_DIR)
