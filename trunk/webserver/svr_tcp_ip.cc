@@ -28,7 +28,7 @@ int socketSetBlockingAndTimeout(int sockfd) {
   int ret;
   // set recv timeout
   timeval tv;
-  tv.tv_usec = KeepAliveTimeoutUSEC; tv.tv_sec = 0;
+  tv.tv_usec = KeepAliveTimeoutUSEC; tv.tv_sec = KeepAliveTimeoutSEC;
   ret = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(struct timeval));
   if (ret < 0) return -1; //  printf("*****setsocket (fd=%d)  recv timeout ret = %d, errno = %d*****\n", sockfd, ret, errno);
 

@@ -138,11 +138,13 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 
     } // end GET
     else if (strncmp(ph,"Connection: Keep-Alive", 22)==0) { // KeepAlive
-      keepalive = true;
-      bool bret = Dispatcher::instance()->enqueue( new UnitTask(BIND(svr_http_read, pk), cn->cfd));  // TOTO: RReadTaskID
-      if (bret == false) { 
-	if (DBGL >= 4) printf("[svr_http_parse_aio] dispatcher error, hpkg=%x\n", pk); 
-	return svr_http_final_aio(pk, cn->cfd, 0); }
+      if ((*(cn->cpp))->csp.size() <= MaxKeepAlive) {
+	keepalive = true;
+	bool bret = Dispatcher::instance()->enqueue( new UnitTask(BIND(svr_http_read, pk), cn->cfd));  // TOTO: RReadTaskID
+	if (bret == false) { 
+	  if (DBGL >= 4) printf("[svr_http_parse_aio] dispatcher error, hpkg=%x\n", pk); 
+	  return svr_http_final_aio(pk, cn->cfd, 0); }
+      }
     }
     else { // skip whole line (HEAD, POST, PUT, DELETE, OPTIONS, TRACE, ...)
       ph = pt + 1;  // if (DBGL >= 6) printf("[svr_http_parse_aio] skipping (%s)\n", ph);

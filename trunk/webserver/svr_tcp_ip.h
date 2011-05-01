@@ -68,8 +68,9 @@ ErrConn svr_conn_connect(Conn * &);            // connect to another server
 ErrConn svr_conn_close  (Conn * &);            // close connection
 
 // TODO: KeepAlive
-#define MaxKeepAlive 200
-#define KeepAliveTimeoutUSEC 15  // 15
+#define MaxKeepAlive 100
+#define KeepAliveTimeoutUSEC 0
+#define KeepAliveTimeoutSEC 15
 
 #define MaxCSL  512   // max backlog: SOMAXCONN [socket dependent]
 
