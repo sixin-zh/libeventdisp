@@ -55,7 +55,7 @@ ErrHTTP svr_http_read(HPKG * &pk) {
 
   IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_parse_aio, pk, _1, _2, _3));
   IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
-  IOCallback    * ioCB  = new IOCallback(okCB, errCB, cn->cfd); // PALL,, or RReadTaskID ? ! SIDEEFFECT ON LINE 172
+  IOCallback    * ioCB  = new IOCallback(okCB, errCB, cn->cfd); // PALL: SIDEEFFECT ON LINE 172,  // TOTO: RReadTaskID
 
   int iret = aio_read(cn->cfd, static_cast<void *> (_tmp.p), MAXRH, 0, ioCB); // end with '\0' 
   if (iret != 0) { 
@@ -87,6 +87,8 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
   char * ph = pk->chead.p; // head
   char * pe = ph + pk->chead.n - 1;  // end
   
+  bool keepalive = false;
+
   while (ph <= pe) {
     // parse line by line
     char * pt = strstr(ph, CRLF);
@@ -95,7 +97,6 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 
     // GET
     if (strncmp(ph,"GET ",4) == 0) { // "GET " + URI + ' ' + "HTTP/1.*"
-
       // create new hpkg
       HPKG * gk = new HPKG(cn);
 
@@ -133,14 +134,22 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
       bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, gk), CacheTaskID)); //// IN SERIAL !
       if (bret == false) { 
 	if (DBGL >= 5) printf("[svr_http_parse] dispatcher error, hpkg=%x\n", gk); 
-	return svr_http_final(gk); }
+	svr_http_final(gk); }
 
     } // end GET
+    else if (strncmp(ph,"Connection: Keep-Alive", 22)==0) { // KeepAlive
+      keepalive = true;
+      bool bret = Dispatcher::instance()->enqueue( new UnitTask(BIND(svr_http_read, pk), cn->cfd));  // TOTO: RReadTaskID
+      if (bret == false) { 
+	if (DBGL >= 4) printf("[svr_http_parse_aio] dispatcher error, hpkg=%x\n", pk); 
+	return svr_http_final_aio(pk, cn->cfd, 0); }
+    }
     else { // skip whole line (HEAD, POST, PUT, DELETE, OPTIONS, TRACE, ...)
-      if (DBGL >= 6) printf("[svr_http_parse_aio] skipping (%s)\n", ph);
-      ph = pt + 1;   // TODO parse the body, footer
+      ph = pt + 1;  // if (DBGL >= 6) printf("[svr_http_parse_aio] skipping (%s)\n", ph);
     }
   } // end parsing
+
+  if (keepalive==false) return svr_http_final_aio(pk, cn->cfd, 0);
 
   return EHTTP_OK;
 } // end svr_http_parse
@@ -159,6 +168,8 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
     if (DBGL >= 4) printf("[svr_http_parse_aio] conn error, hpkg=%x\n", pk); 
     return svr_http_final(pk); }
 
+  pk->hst = HS_PARSING;
+
   // HS_PARSING;
   pk->chead.p = (char *) buf;
   pk->chead.n = nbytes-1; // '\0 not counted
@@ -169,10 +180,7 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
     return svr_http_final_aio(pk, fd, 0);
   }
   else {
-    bool bret = Dispatcher::instance()->enqueue( new UnitTask(BIND(svr_http_read, pk), cn->cfd));  // TODO: RReadTaskID
-    if (bret == false) { 
-      if (DBGL >= 4) printf("[svr_http_parse_aio] dispatcher error, hpkg=%x\n", pk); 
-      return svr_http_final(pk); }
+
   }
   
   return svr_http_parse(pk);
@@ -516,7 +524,7 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
   Conn * & cn = *(pk->cpn); 
 
   if (cn->cst != CS_CLOSING) {
-    if (pk->hst == HS_READING) {
+    if ((pk->hst == HS_READING) || (pk->hst == HS_PARSING)) {
       //      pthread_mutex_lock(&(cn->pkgl));
       if (cn->cst == CS_CLOSING_W)
   	cn->cst = CS_CLOSING;
