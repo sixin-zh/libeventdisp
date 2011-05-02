@@ -4,9 +4,6 @@
 #include <svr_http.h>
 #include <svr_tcp_ip.h>
 
-
-//#define MAXWBC 5      // max char for encoding hex length (not including '\n')
-
 #include <dispatcher.h>
 #include <aio_wrapper.h>
 
@@ -22,7 +19,7 @@ using nyu_libeventdisp::IOCallback;
 using namespace std::tr1::placeholders;
 
 
-#define MAXCSIZE 1024
+#define MAXCSIZE 65536
 static Cache _cache(MAXCSIZE);
 
 #define CacheTaskID 0
@@ -43,8 +40,7 @@ ErrHTTP svr_http_read(HPKG * &pk) {
 
   Conn * &cn = (*pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_R)) {
-    printf("[svr_http_read] conn error, hpkg=%x\n",pk); 
-    
+    if (DBGL >= 1) printf("[svr_http_read] conn error, hpkg=%x, cn=%x\n",pk,cn);    
     return svr_http_final(pk); }
 
   pk->hst = HS_READING;
@@ -80,7 +76,7 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 
   Conn * &cn = *(pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    printf("[svr_http_parse] conn error, hpkg=%x\n", pk); 
+    if (DBGL >= 1)  printf("[svr_http_parse] conn error, hpkg=%x\n", pk); 
     return svr_http_final(pk); } 
 
   pk->hst = HS_PARSING;
@@ -184,7 +180,7 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
 
   Conn * &cn = *(pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    printf("[svr_http_parse_aio] conn error, hpkg=%x\n", pk); 
+    if (DBGL >= 1) printf("[svr_http_parse_aio] conn error, hpkg=%x\n", pk); 
     return svr_http_final(pk); }
 
   if (DBGL >= 4) printf("[svr_http_parse_aio] new request (hpkg=%x, cn=%x, fd=%d, nbytes=%d):\n%s\n", pk, cn, fd, nbytes, pk->chead.p);
@@ -208,11 +204,11 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
 }
 
 
-// FETCH; PUT; CANCEL [CacheTaskID]
+// FETCH; PUT; (CANCEL) [CacheTaskID]
 ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
-  if (DBGL >= 0) printf("[svr_http_header_rio] hpkg=%x\n", pk);
   if (DBGL >= 0) assert(pk != NULL);
+  if (DBGL >= 1) printf("[svr_http_header_rio] hpkg=%x\n", pk);
 
   pk->hst = HS_FETCHING;
   pk->wst = WS_HEAD;
@@ -338,14 +334,14 @@ ErrHTTP svr_http_header_to_body_aio(HPKG * &pk, int &fd, void * buf, const size_
 }
 
 
-// Got Head [CacheTaskID]
+// Got TODO: parallize the cache callback
 ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
 
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * &cn = (*pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    printf("[svr_http_header_wio] conn error, hpkg=%x\n", pk); 
+    if (DBGL >= 1) printf("[svr_http_header_wio] conn error, hpkg=%x\n", pk); 
     return svr_http_final(pk); }
 
   if (DBGL >= 2) printf("[svr_http_header_wio] hpkg=%x, cn=%x, nbytes=%d\n", pk, cn, cd.size);
@@ -379,7 +375,9 @@ ErrHTTP svr_http_header(HPKG * &pk) {
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * &cn = (*pk->cpn);
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { printf("[svr_http_header] conn error, hpkg=%x \n", pk); return svr_http_final(pk); }
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
+    if (DBGL >= 1) printf("[svr_http_header] conn error, hpkg=%x \n", pk); 
+    return svr_http_final(pk); }
 
   if (DBGL >= 4) printf("[svr_http_header] hpkg=%x, cn=%x\n", pk, cn);
 
@@ -438,7 +436,9 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * &cn = (*pk->cpn);
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { printf("[svr_http_fetch] pk=%x, cn=%x, conn error\n", pk, cn); return svr_http_final(pk); }
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
+    if (DBGL >= 1) printf("[svr_http_fetch] pk=%x, cn=%x, conn error\n", pk, cn); 
+    return svr_http_final(pk); }
 
   if (DBGL >= 2) printf("[svr_http_fetch] hpkg=%x, cn=%x, met=%s, ver=%s, uri=%s\n", pk, cn, pk->met.p, pk->ver.p, pk->uri.p);
 
@@ -463,7 +463,7 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
 }
 
 
-// BODY GOT [CacheTaskID]
+// GOT, TODO: parallel this callback by cache
 ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
 
   if (DBGL >= 0) assert(pk != NULL);
@@ -476,7 +476,7 @@ ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
   // put(ed)
   Conn * &cn = (*pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W))  { 
-    printf("[svr_http_body_wio] hpkg=%x, cn=%x, conn error\n", pk, (*pk->cpn)); 
+    if (DBGL >= 1)  printf("[svr_http_body_wio] hpkg=%x, cn=%x, conn error\n", pk, (*pk->cpn)); 
     return svr_http_final_aio(pk, cn->cfd, 0); }
 
   if (DBGL >= 4) printf("[svr_http_body_wio] hpkg=%x, cn=%x, nbytes=%d, data=%s\n", pk, cn, cd.size, cd.data);
@@ -501,8 +501,8 @@ ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
   if (DBGL >= 4) printf("[svr_http_body_rio] hpkg=%x, wst=%d\n", pk, pk->wst);
 
   if (pk->wst == WS_BODY) {
-    if (nbytes > 0) {    // ! EOF
-      if (pk->bodykey.p != NULL) _cache.doneWith(pk->bodykey.p);
+    if (pk->bodykey.p != NULL) _cache.doneWith(pk->bodykey.p);
+    if (nbytes > 0) {    // ! EOF     
       pk->tr_offset += nbytes;
       return svr_http_body(pk); // continue writing
     } else {
@@ -516,7 +516,7 @@ ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
   return EHTTP_OK;
 }
 
-// PUT
+// PUT [CacheTaskID]
 ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
   if (DBGL >= 4) printf("[svr_http_body_pio] hpkg=%x, put key=%s, size=%d, data=%s\n", pk, pk->bodykey.p, nbytes,  buf);
@@ -536,12 +536,13 @@ ErrHTTP svr_http_body(HPKG * &pk) {
   if (DBGL >= 4) printf("[svr_http_body] hpkg=%x, wst=%d\n", pk, pk->wst);
 
   Conn * &cn = (*pk->cpn);
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { printf("[svr_http_body] conn error, hpkg=%x\n", pk); return svr_http_final(pk); }
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) {
+    if (DBGL >= 1) printf("[svr_http_body] conn error, hpkg=%x\n", pk);
+    return svr_http_final(pk); }
 
   pk->hst = HS_FETCHING;
-  pk->wst = WS_BODY;
+  pk->wst = WS_BODY;   //  if (pk->hsn == N_200) { // pk->enc == TE_IDE
   
-  //  if (pk->hsn == N_200) { // pk->enc == TE_IDE
   // new key
   if (pk->bodykey.p == NULL) { pk->bodykey.p = (char *) malloc(MAXKEYS); pk->bodykey.cached = false; pk->bodykey.p[MAXKEYS-1] = '\0'; }
   pk->bodykey.n = snprintf(pk->bodykey.p, MAXKEYS, "%s#%d", pk->uri.p, pk->tr_offset);
@@ -565,9 +566,6 @@ ErrHTTP svr_http_body(HPKG * &pk) {
     int nret = aio_read(pk->hfd, static_cast<void *> (pk->cbody.p), MAXWB, pk->tr_offset, ioCB);
     if (DBGL >=0) assert(nret == 0); // cancelReseration,  return svr_http_final(pk);
   }
-    //} // else {
-  //   return svr_http_final(pk);
-  // }
 
   return EHTTP_OK;
 }
@@ -613,12 +611,14 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
     // doneWith
     if ((pk->hst == HS_WRITING) && (pk->wst == WS_HEAD))  {
       if (DBGL >= 0) assert(pk->headkey.p != NULL);
-      { printf("done with hpkg %x, head key =%s\n", pk, pk->headkey.p); _cache.doneWith(pk->headkey.p); }
+      if (DBGL >= 1) printf("done with hpkg %x, head key =%s\n", pk, pk->headkey.p); 
+      _cache.doneWith(pk->headkey.p);
     }
 
     if ((pk->hst == HS_WRITING) && (pk->wst == WS_BODY))  {
       if (DBGL >= 0) assert(pk->bodykey.p != NULL);
-      { printf("done with hpkg %x, body key =%s\n", pk, pk->bodykey.p); _cache.doneWith(pk->bodykey.p); }
+      if (DBGL >= 1) printf("done with hpkg %x, body key =%s\n", pk, pk->bodykey.p); 
+      _cache.doneWith(pk->bodykey.p);
     }
   }
     //  }
@@ -633,15 +633,14 @@ ErrHTTP svr_http_final(HPKG * &pk) {
   if (DBGL >= 0) assert(pk->cpn != NULL);  
 
   Conn * & cn = *(pk->cpn);
-  HPKG * park = pk->ppg;
-  HPKG * fget = pk->nsg;
+  HPKG *  park = pk->ppg;
+  HPKG *  fget = pk->nsg;
 
   if (DBGL >= 1) printf("[svr_http_final] hpkg=%x, fget=%x, park=%x, cn=%x\n", pk, fget, park, cn);
 
   delete pk;
 
   if (park == NULL) { // EOF, close connection 
-    if (DBGL >= 1) { printf("[svr_http_final] close conn <-  pool size = %d\n", (*(cn->cpp))->csp.size());  fflush(stdout); }
     svr_conn_close(cn);
   }
   else if (fget == NULL) { // last GET, continue "reading"

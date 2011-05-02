@@ -5,8 +5,8 @@
 
 #define MAXRH   8192
 #define MAXWH   8192
-#define MAXWHL  256    // max 32 lines for head
-#define MAXWB   65536  // hex: 10000
+#define MAXWHL  256     // max 32 lines for head
+#define MAXWB   1048576 // 65536  // hex: 10000
 #define MAXKEYS 256
 
 // state
