@@ -28,7 +28,7 @@ int socketSetBlockingAndTimeout(int sockfd) {
   int ret;
   // set recv timeout
   timeval tv;
-  tv.tv_usec = KeepAliveTimeoutUSEC; tv.tv_sec = KeepAliveTimeoutSEC;
+  tv.tv_usec = ReadTimeoutUSEC; tv.tv_sec = ReadTimeoutSEC;
   ret = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(struct timeval));
   if (ret < 0) return -1; //  printf("*****setsocket (fd=%d)  recv timeout ret = %d, errno = %d*****\n", sockfd, ret, errno);
 
@@ -109,7 +109,7 @@ ErrConn svr_conn_listen(Conn * &cn) {
 }
 
 
-#define ACSLEEPTIME_U 1000
+#define ACSLEEPTIME_U 500000
 // Accept new conn pn from server cn (listening)
 ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
 
@@ -117,16 +117,18 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
 
   if ((cn==NULL) || (cn->cst != CS_LISTENING)) return ERRCONN_AC;
 
+  if (MaxACCEPT < cn->csp.size()) usleep(ACSLEEPTIME_U);; // TODO
+
   // wait to accept (in an 'endless' loop)
   int connfd = accept(cn->cfd, (SVR_SA *) (SVR_SA *) NULL, NULL);
   if (connfd < 0) {
     if (DBGL >= 2) printf("[svr_conn_accept] accept fail, errorno: %d\n", errno); // when fd or accept limit exceeded
 
-    //usleep(ACSLEEPTIME_U);
+    usleep(ACSLEEPTIME_U); // TODO
     
     return ERRCONN_AC;
   }
-  
+   
   // keepalive: set BLOCKING and I/O TIMEOUT
   if (socketSetBlockingAndTimeout(connfd) < 0) {
     if (DBGL >= 2) printf("[svr_conn_accept] fail to set nonblicking and timeout\n"); // when fd or accept limit exceeded
@@ -149,7 +151,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   pthread_mutex_lock(&(cn->pkgl));
   cn->csp.push_back(pn);                  // pooling
   HPKG * pk = new HPKG(cn->csp.back());   // create HPKG (req)
-  if (DBGL >= 2) {  printf("svr_http_accept] new pool size %d\n",cn->csp.size()); }
+  if (DBGL >= 2) {  printf("svr_http_accept] new pool size %d\n", cn->csp.size()); }
   pthread_mutex_unlock(&(cn->pkgl));
 
   //  if (DBGL >= 6) printf("[svr_conn_accept] push ptr: %x\n",  &pn);
@@ -240,6 +242,7 @@ ErrConn svr_conn_close(Conn * &cn) {
   if ((&pn != NULL) && (pn != NULL)) {
     pthread_mutex_lock(&(pn->pkgl));
     pn->csp.remove(cn);
+    if (DBGL >= 1) { printf("[svr_http_final] close conn ->  pool size = %d\n", pn->csp.size());  fflush(stdout); }
     pthread_mutex_unlock(&(pn->pkgl));
   }
   
