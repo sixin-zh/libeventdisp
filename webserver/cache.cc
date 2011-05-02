@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <map>
 
+#include <stdio.h>
+
 using std::make_pair;
 using std::pair;
 using std::list;
@@ -194,6 +196,7 @@ void Cache::doneWith(const char *key) {
     }
   }
   else {
+    printf("key: %s\n", key); fflush(stdout);
     assert(false);
   }
 
