@@ -613,6 +613,7 @@ ErrHTTP svr_http_final(HPKG * &pk) {
   delete pk;
 
   if (park == NULL) { // EOF, close connection 
+    if (DBGL >= 1) printf("[svr_http_final] close conn <-  pool size = %d\n", (*(cn->cpp))->csp.size());
     svr_conn_close(cn);
   }
   else if (fget == NULL) { // last GET, continue "reading"
@@ -632,8 +633,6 @@ ErrHTTP svr_http_final(HPKG * &pk) {
     bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, fget), CacheTaskID)); // [CacheTaskID] IN SERIAL !
     if (bret == false) svr_http_final(fget);
   }
-
-
   
 
   //   // HAS More GET Task ?
