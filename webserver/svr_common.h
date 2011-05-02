@@ -12,7 +12,7 @@
 
 
 // server debug (verbal) level 0,1,2,3,4,...
-#define DBGL 5
+#define DBGL 1
 #include <assert.h>
 #include <errno.h>
 
