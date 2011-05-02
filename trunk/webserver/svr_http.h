@@ -80,11 +80,11 @@ struct HPKG {
 
   Conn **  cpn;                 // hpkg -> conn
 
-  HPKG **  ppg;                 // parent
-  HPKG **  lcg;                 // last-child
-  HPKG **  nsg;                 // next-slibling
+  HPKG *  ppg;                 // parent
+  HPKG *  lcg;                 // last-child
+  HPKG *  nsg;                 // next-slibling
 
-  HPKG() { cpn = NULL; hst = HS_UNKNOWN; enc = TE_UNO; vern = 1; hfd = -1; tr_offset = 0; ppg = NULL; lcg = NULL; nsg = NULL; }
+  HPKG() { cpn = NULL; hst = HS_UNKNOWN; vern = 1; hfd = -1; tr_offset = 0; ppg = NULL; lcg = NULL; nsg = NULL; } // enc = TE_UNO;
 
   HPKG(Conn * & cn) {
     cpn = &cn;

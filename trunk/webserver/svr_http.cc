@@ -87,7 +87,7 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
   char * ph = pk->chead.p;       // head
   char * pe = ph + pk->chead.n;  // '\0'
   
-  HPKG ** call = NULL;
+  HPKG * fget = NULL;   // first GET HPKG
 
   while (ph < pe) {
     // parse line by line
@@ -130,15 +130,15 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 
       if (DBGL >= 5) printf("[svr_http_parse] new hpkg=%x, cn=%x, met=%s, ver=%s, uri=%s\n", gk, cn, gk->met.p, gk->ver.p, gk->uri.p);
 
-      // set order
-      gk->ppg = &pk;   // parent
+      // ordering
+      gk->ppg = pk;   // parent
       if (pk->lcg == NULL) {
-	call = &gk;    // first GET call
-	pk->lcg = &gk; // last child [LOCK]
+	fget = gk;    // first GET
+	pk->lcg = gk; // last child [LOCK]
       }
       else {
-	(*(pk->lcg))->nsg = &gk; // next sibling [LOCK]
-	pk->lcg = &gk;           // last child
+	(pk->lcg)->nsg = gk; // next sibling [LOCK]
+	pk->lcg = gk;        // last child
       }
 
     } // end GET
@@ -147,38 +147,25 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
     }
   } // end parsing
 
-
-  // HAS GET Task ?
-  bool bret = false; // = NULL;
-  while ((call != NULL) && (bret == false)) {
-    if (DBGL >= 1) assert(*call != NULL);
-    // process the first GET
-    bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, *call), CacheTaskID)); // [CacheTaskID] IN SERIAL !
-    // if not enqueed ... 
-    if (bret == false) {
-      if (*(pk->lcg) == (*call)) { pk->lcg = NULL; break; } // last GET
-      HPKG ** next = (*call)->nsg;
-      svr_http_final(*call);
-      call = next;
-      if (DBGL >= 1) printf("[svr_http_parse] dispatcher error, hpkg=%x\n", *call); 
-    }
-  }
   
-  // NO GET TASK !
-  if (bret == false) {
+  if (fget != NULL) { // go on fetching
+    bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, fget), CacheTaskID)); // [CacheTaskID] IN SERIAL !
+    if (bret == false) svr_http_final(fget);
+  }
+  else { // NO GET TASK !
     // continue "reading"
     if (((*(cn->cpp))->csp.size()) <= MaxKeepAlive) {
-      printf("[svr_http_parse] pool size = %d\n", (*(cn->cpp))->csp.size());
-      bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, pk), cn->cfd));  // TOTO: RReadTaskID
+      if (DBGL >= 4) printf("[svr_http_parse] keepalive, current pool size = %d\n", (*(cn->cpp))->csp.size());
+      bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, pk), cn->cfd));      // TOTO: RReadTaskID
       if (bret == false) { 
 	if (DBGL >= 4) printf("[svr_http_parse] dispatcher error, hpkg=%x\n", pk); 
 	return svr_http_final_aio(pk, cn->cfd, 0); }
     } else {
-      if (DBGL >= 1) printf("[svr_http_parse] max pooled, cn=%x, hpkg=%x\n", cn, pk); 
+      if (DBGL >= 2) printf("[svr_http_parse] max pooled, cn=%x, hpkg=%x\n", cn, pk); 
       return svr_http_final_aio(pk, cn->cfd, 0);
     }
   }
-
+  
   //  pthread_mutex_lock(&((*(cn->cpp))->pkgl));
   //  printf("svr_http_parse] conn pool size %d\n", (*(cn->cpp))->csp.size());
   //  pthread_mutex_unlock(&((*(cn->cpp))->pkgl));
@@ -618,80 +605,89 @@ ErrHTTP svr_http_final(HPKG * &pk) {
   if (DBGL >= 1) assert(pk->cpn != NULL);  
 
   Conn * & cn = *(pk->cpn);
+  HPKG * park = pk->ppg;
+  HPKG * fget = pk->nsg;
 
-  bool bret = false; 
-  HPKG ** call = pk->nsb; HPKG ** park = pk->ppg;
+  if (DBGL >= 1) printf("[svr_http_final] hpkg=%x, fget=%x, park=%x, cn=%x\n", pk, fget, park, cn);
 
   delete pk;
 
-  if (park != NULL) { // 
-  
-    // HAS More GET Task ?
-    while ((call != NULL) && (bret == false)) {
-      if (DBGL >= 1) assert(*call != NULL);
-      // process the first GET
-      bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, *call), CacheTaskID)); // [CacheTaskID] IN SERIAL !
-      // if not enqueed ... 
-      if (bret == false) {
-	if (*((*park)->lcg) == (*call)) { pk->lcg = NULL; break; } // last GET
-	HPKG ** next = (*call)->nsg;
-	svr_http_final(*call);
-	call = next;
-	if (DBGL >= 1) printf("[svr_http_parse] dispatcher error, hpkg=%x\n", *call); 
-      }
+  if (park == NULL) { // EOF, close connection 
+    svr_conn_close(cn);
+  }
+  else if (fget == NULL) { // last GET, continue "reading"
+    park->lcg = NULL;
+    if (((*(cn->cpp))->csp.size()) <= MaxKeepAlive) {
+      if (DBGL >= 3) printf("[svr_http_final] keepalive, current pool size = %d\n", (*(cn->cpp))->csp.size());
+      bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, park), cn->cfd));  // TOTO: RReadTaskID
+      if (bret == false) { 
+	if (DBGL >= 4) printf("[svr_http_final] dispatcher error, hpkg=%x\n", park); 
+	svr_http_final(park); }
+    } else {
+      if (DBGL >= 2) printf("[svr_http_final] max pooled, cn=%x, hpkg=%x\n", cn, park); 
+      svr_http_final(park);
     }
-  
-    // NO GET TASK !
-    if (bret == false) {
-      // continue "reading"
-      if (((*(cn->cpp))->csp.size()) <= MaxKeepAlive) {
-	printf("[svr_http_parse] pool size = %d\n", (*(cn->cpp))->csp.size());
-	bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, pk), cn->cfd));  // TOTO: RReadTaskID
-	if (bret == false) { 
-	  if (DBGL >= 4) printf("[svr_http_parse] dispatcher error, hpkg=%x\n", pk); 
-	  return svr_http_final_aio(pk, cn->cfd, 0); }
-      } else {
-	if (DBGL >= 1) printf("[svr_http_parse] max pooled, cn=%x, hpkg=%x\n", cn, pk); 
-	return svr_http_final_aio(pk, cn->cfd, 0);
-      }
-    }
-
-  } 
-  else { 
-    // close the conn
-    
-    
-
-
+  }
+  else { // continue fetching
+    bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, fget), CacheTaskID)); // [CacheTaskID] IN SERIAL !
+    if (bret == false) svr_http_final(fget);
   }
 
 
-  if (DBGL >= 1) printf("[svr_http_final] hpkg = %x, cn = %x, cn->cst = %d, hpkg->c = %d (before --)\n", pk, cn, cn->cst, cn->pkgc);
-
   
- 
+
+  //   // HAS More GET Task ?
+  //   while ((call != NULL) && (bret == false)) {
+  //     if (DBGL >= 1) assert(*call != NULL);
+  //     // process the first GET
+  //     bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, *call), CacheTaskID)); // [CacheTaskID] IN SERIAL !
+  //     // if not enqueed ... 
+  //     if (bret == false) {
+  // 	if (*((*park)->lcg) == (*call)) { pk->lcg = NULL; break; } // last GET
+  // 	HPKG ** next = (*call)->nsg;
+  // 	svr_http_final(*call);
+  // 	call = next;
+  // 	if (DBGL >= 1) printf("[svr_http_parse] dispatcher error, hpkg=%x\n", *call); 
+  //     }
+  //   }
+  
+  //   // NO GET TASK !
+  //   if (bret == false) {
+
+  //   }
+
+  // } 
+  // else { 
+  //   // close the conn
+    
+    
+
+
+  // }
+
+
 
 
   // pthread_mutex_lock(&(cn->pkgl));
   // --cn->pkgc;
   // pthread_mutex_unlock(&(cn->pkgl));
 
-  if ((cn->pkgc == 0) && ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_R) || (cn->cst == CS_CLOSING_W))) {
-    if (DBGL >= 1) { printf("[svr_http_final] cn=%x, pool size = %d\n", cn, (*(cn->cpp))->csp.size() ); fflush(stdout); }
-    svr_conn_close(cn);
-  }
+  // if ((cn->pkgc == 0) && ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_R) || (cn->cst == CS_CLOSING_W))) {
+  //   if (DBGL >= 1) { printf("[svr_http_final] cn=%x, pool size = %d\n", cn, (*(cn->cpp))->csp.size() ); fflush(stdout); }
+  //   svr_conn_close(cn);
+  // }
 
   //
-  if (((*(cn->cpp))->csp.size()) <= MaxKeepAlive) { 
-    printf("[svr_http_parse] pool size = %d\n", (*(cn->cpp))->csp.size());
-    bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, pk), cn->cfd));  // TOTO: RReadTaskID
-    if (bret == false) { 
-      if (DBGL >= 4) printf("[svr_http_parse] dispatcher error, hpkg=%x\n", pk); 
-      return svr_http_final_aio(pk, cn->cfd, 0); }
-  } else {
-    if (DBGL >= 1) printf("[svr_http_parse] max pooled, cn=%x, hpkg=%x\n", cn, pk); 
-    return svr_http_final_aio(pk, cn->cfd, 0);
-  }
+  // if (((*(cn->cpp))->csp.size()) <= MaxKeepAlive) { 
+  //   printf("[svr_http_parse] pool size = %d\n", (*(cn->cpp))->csp.size());
+  //   bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, pk), cn->cfd));  // TOTO: RReadTaskID
+  //   if (bret == false) { 
+  //     if (DBGL >= 4) printf("[svr_http_parse] dispatcher error, hpkg=%x\n", pk); 
+  //     return svr_http_final_aio(pk, cn->cfd, 0); }
+  // } else {
+  //   if (DBGL >= 1) printf("[svr_http_parse] max pooled, cn=%x, hpkg=%x\n", cn, pk); 
+  //   return svr_http_final_aio(pk, cn->cfd, 0);
+  // }
 
 
   return EHTTP_FINAL;

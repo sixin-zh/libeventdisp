@@ -48,16 +48,16 @@ struct Conn {
   POOL<Conn*>::L    csp;   // pool for child-connections
   Conn **           cpp;   // parent connection
 
-  //  pthread_mutex_t   pkgl;  // pkgs/pool lock
+  pthread_mutex_t   pkgl;  // pkgs/pool lock
   //  size_t            pkgc;  // pkgs counter
 
   Conn() {
-    cpp = NULL; pkgc = 0; 
-    //    pthread_mutex_init(&pkgl, NULL); 
+    cpp = NULL; // pkgc = 0; 
+    pthread_mutex_init(&pkgl, NULL); 
   }
 
   ~Conn() {
-    //    pthread_mutex_destroy(&pkgl);
+    pthread_mutex_destroy(&pkgl);
   }
 };
 
