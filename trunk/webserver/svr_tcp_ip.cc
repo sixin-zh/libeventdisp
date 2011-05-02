@@ -149,11 +149,11 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   pthread_mutex_lock(&(cn->pkgl));
   cn->csp.push_back(pn);                  // pooling
   HPKG * pk = new HPKG(cn->csp.back());   // create HPKG (req)
-  printf("svr_http_accept] new pool size %d\n",cn->csp.size());
+  if (DBGL >= 3) {  printf("svr_http_accept] new pool size %d\n",cn->csp.size()); }
   pthread_mutex_unlock(&(cn->pkgl));
 
-  //  if (DBGL >= 5) printf("[svr_conn_accept] push ptr: %x\n",  &pn);
-  //if (DBGL >= 5) printf("[svr_conn_accept] pushed ptr: %x\n", &(cn->csp.back()));
+  //  if (DBGL >= 6) printf("[svr_conn_accept] push ptr: %x\n",  &pn);
+  //  if (DBGL >= 6) printf("[svr_conn_accept] pushed ptr: %x\n", &(cn->csp.back()));
   if (DBGL >= 5) printf("[svr_conn_accept] svr=%x, peer=%x, hpkg=%x\n", cn, *(pk->cpn), pk);
 
   // read header
