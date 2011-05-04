@@ -46,6 +46,7 @@ struct HashCharPtr {
   static const size_t MODULUS_MASK = 0x3;
   
   size_t operator()(const char *c) const {
+#ifndef USE_STRING_HASHING
     const size_t len = strlen(c);
     size_t charsHashed = 0;
     size_t hashSeed = 0;
@@ -90,6 +91,10 @@ struct HashCharPtr {
     }
 
     return hashSeed;
+#else
+    std::tr1::hash<std::string> hasher;
+    return hasher(std::string(c));
+#endif
   }
 };
 
