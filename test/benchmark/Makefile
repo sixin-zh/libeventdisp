@@ -2,7 +2,8 @@ CXX = g++
 CPPFLAGS += -g -Wall -Wextra -I../../lib/inc
 CXXFLAGS += -L../../build -lpthread -leventdisp -lrt
 
-TARGET = conv
+TARGET = conv conv_test
+OBJ = conv_helper.o
 
 all: $(TARGET)
 
@@ -10,7 +11,11 @@ all: $(TARGET)
 	@$(CXX) $(CPPFLAGS) -c -o $@ $<
 
 conv: conv.cc $(OBJ)
-	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $<
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OBJ) -o $@ $<
+
+conv_test: conv_test.cc $(OBJ)
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OBJ) -o $@ $<
+
 
 .phony: clean perf
 clean:
