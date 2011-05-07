@@ -84,6 +84,7 @@ ErrConn svr_conn_listen(Conn * &cn) {
 // #define ACSLEEPTIME_U 500000
 ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
 
+  if (DBGL >= 5) { printf("[svr_conn]"); fflush(stdout); }
   if (DBGL >= 5) printf("[svr_conn]");
 
   pn = NULL; // peer connection
@@ -120,7 +121,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   if (DBGL >= 3) {
     struct sockaddr_in cl_addr; socklen_t cl_addrlen;
     getpeername(connfd,  (SVR_SA *) &cl_addr, &cl_addrlen);
-    printf("[svr_conn_accept] new socket accetped: cn=%x, cfd=%d, ip=%s:%d \n", cn, connfd, inet_ntoa(cl_addr.sin_addr), ntohs(cl_addr.sin_port));
+    printf("[svr_conn_accept] new socket accetped: svr=%x, peer=%x, cfd=%d, ip=%s:%d \n", cn, pn, connfd, inet_ntoa(cl_addr.sin_addr), ntohs(cl_addr.sin_port));
   }
 
   pthread_mutex_lock(&(cn->pkgl));
@@ -169,6 +170,7 @@ ErrConn svr_conn_connect(Conn * &pn) {
 // if conn is not closed (by client or server), then close it and all sub-conns ..
 ErrConn svr_conn_close(Conn * &cn) {
 
+  if (DBGL >= 5) { printf("[svr_conn]"); fflush(stdout); }
   if (DBGL >= 5) printf("[svr_conn]");
 
   if (DBGL >= 3) printf("[svr_conn_close] close cn=%x\n", cn);

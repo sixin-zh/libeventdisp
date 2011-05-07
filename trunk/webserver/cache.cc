@@ -3,12 +3,15 @@
 #include <cstdlib>
 #include <map>
 
+#include <stdio.h>
+
 using std::make_pair;
 using std::pair;
 using std::list;
 
 namespace {
 const char* strCpy(const char* str) {
+  printf("[cache]\n"); fflush(stdout);
   size_t size = strlen(str);
   char *copy = new char[size]();
   strncpy(copy, str, size);
@@ -20,20 +23,22 @@ const char* strCpy(const char* str) {
 
 namespace nyu_libedisp_webserver {
 CacheData::CacheData(const char *data, size_t size, bool isCached) :
-    data(data), size(size), isCached(isCached) {
+  data(data), size(size), isCached(isCached) {   printf("[cache] data\n"); fflush(stdout);
 }
 
 Cache::CacheEntry::CacheEntry(const char *name) :
     name(name), data(NULL), size(0), refCount(1),
-    freeListRef(NULL), isReserved(true) {
+    freeListRef(NULL), isReserved(true) {   printf("[cache] entry\n"); fflush(stdout);
 }
 
 Cache::CacheEntry::CacheEntry(const char *name, const char *data, size_t size) :
     name(name), data(data), size(size), refCount(1),
-    freeListRef(NULL), isReserved(false) {
+    freeListRef(NULL), isReserved(false) {   printf("[cache] entry\n"); fflush(stdout);
 }
 
 void Cache::CacheEntry::deallocate(CacheEntry &entry) {
+  printf("[cache] dealloc\n"); fflush(stdout);
+
   free(const_cast<char *>(entry.data));
   delete[] entry.name;
 
@@ -63,6 +68,11 @@ Cache::~Cache() {
 }
 
 bool Cache::put(const char *key, const char *buf, size_t size) {
+
+  printf("[cache]"); fflush(stdout);
+
+  printf("[cache] put key=%s, buf=%x, size=%d\n", key, buf, size);
+
   bool ret = false;
 
   const char *keyCopy = strCpy(key);
@@ -101,6 +111,11 @@ bool Cache::put(const char *key, const char *buf, size_t size) {
 }
 
 bool Cache::get(const char *key, CacheCallback *callback) {
+
+  printf("[cache] get"); fflush(stdout);
+
+  printf("[cache] get key=%s, cb=%x\n", key, callback);
+
   bool ret = false;
 
   CacheMap::iterator iter = cacheMap_.find(key);
@@ -134,6 +149,11 @@ bool Cache::get(const char *key, CacheCallback *callback) {
 }
 
 bool Cache::reserve(const char *key) {
+
+  printf("[cache] reserve"); fflush(stdout);
+
+  printf("[cache] reserve key=%s\n", key);
+
   bool ret = false;
 
   const char *keyCopy = strCpy(key);
@@ -158,6 +178,11 @@ bool Cache::reserve(const char *key) {
 }
 
 bool Cache::cancelReservation(const char *key) {
+
+  printf("[cache] cancel"); fflush(stdout);
+
+  printf("[cache] cancelReservation key=%s\n", key);
+
   bool ret = false;
   CacheMap::iterator iter = cacheMap_.find(key);
 
@@ -183,6 +208,11 @@ bool Cache::cancelReservation(const char *key) {
 }
 
 void Cache::doneWith(const char *key) {
+
+  printf("[cache] doneWith"); fflush(stdout);
+
+  printf("[cache] doneWith key=%s\n", key);
+
   CacheMap::iterator iter = cacheMap_.find(key);
 
   if (iter != cacheMap_.end()) {
@@ -203,6 +233,11 @@ void Cache::doneWith(const char *key) {
 }
 
 void Cache::cleanup(size_t space) {
+
+  printf("[cache] cleanup"); fflush(stdout);
+
+  printf("[cache] cleanup\n");
+
   size_t spaceFreed = 0;
   CacheEntry *entry = NULL;
 
