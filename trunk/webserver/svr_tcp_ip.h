@@ -67,12 +67,12 @@ ErrConn svr_conn_accept (Conn * &, Conn * &);  // accept new connection from cli
 ErrConn svr_conn_connect(Conn * &);            // connect to another server
 ErrConn svr_conn_close  (Conn * &);            // close connection
 
-// TODO: KeepAlive
-#define MaxCSL  512   // max backlog: SOMAXCONN [socket dependent]
-#define MaxKeepAlive 150
-#define ReadTimeoutUSEC 0
-#define ReadTimeoutSEC 30
-#define MaxACCEPT 500
+/* // TODO: KeepAlive */
+/* #define MaxCSL  512   // max backlog: SOMAXCONN [socket dependent] */
+/* #define MaxKeepAlive 150 */
+/* #define ReadTimeoutUSEC 0 */
+/* #define ReadTimeoutSEC 30 */
+/* #define MaxACCEPT 500 */
 
 // Notice: MaxKeepAlive,MaxCSL <= Max#FD
 
