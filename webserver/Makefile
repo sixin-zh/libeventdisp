@@ -33,7 +33,7 @@ websvrd: cache.od svr_common.od svr_tcp_ip.od svr_http.od websvrd.od
 start:
 	@echo Start server..
 	@-cd $(SVRD_BIN_DIR) ; \
-	./websvrd 
+	./websvrd
 
 .PHONY:
 cleano:	
@@ -42,7 +42,7 @@ cleano:
 .PHONY:
 cleana: 
 	-rm -f *.o* $(TARGETS)
-
+	-rm -f $(SVRD_BIN_DIR)/websvrd
 
 .PHONY: 
 migrate:
