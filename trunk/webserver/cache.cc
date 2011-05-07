@@ -71,7 +71,7 @@ bool Cache::put(const char *key, const char *buf, size_t size) {
 
   printf("[cache]"); fflush(stdout);
 
-  printf("[cache] put key=%s, buf=%x, size=%d\n", key, buf, size);
+  printf("[cache] put key=%s, buf=%p, size=%zu\n", key, buf, size);
 
   bool ret = false;
 
@@ -114,7 +114,7 @@ bool Cache::get(const char *key, CacheCallback *callback) {
 
   printf("[cache] get"); fflush(stdout);
 
-  printf("[cache] get key=%s, cb=%x\n", key, callback);
+  printf("[cache] get key=%s, cb=%p\n", key, callback);
 
   bool ret = false;
 
