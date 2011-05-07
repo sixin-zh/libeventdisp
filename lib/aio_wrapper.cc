@@ -6,7 +6,10 @@
 #include <cstring>
 #include <cerrno>
 
-//#define LIBEVENT_USE_SIG 1
+#include <stdio.h>
+
+
+#define LIBEVENT_USE_SIG 1
 
 using nyu_libeventdisp::Dispatcher;
 using std::tr1::bind;
@@ -107,6 +110,9 @@ void checkIOProgress(aiocb *aioCB, IOCallback *callback) {
 
 int aioSkeletonFunction(int (*aio_func)(aiocb *), int fd, void *buff,
                         size_t len, off_t offset, IOCallback *callback) {
+
+  printf("[aioSkeletonFunction]\n"); fflush(stdout); 
+
   aiocb *aioCB = new aiocb();
 
   memset(reinterpret_cast<char *>(aioCB), 0, sizeof(aiocb));
@@ -174,11 +180,13 @@ IOCallback::~IOCallback() {
 
 int aio_read(int fd, void *buff, size_t len, off_t offset,
              IOCallback *callback) {
+  printf("[aio_read]\n"); fflush(stdout); 
   return aioSkeletonFunction(::aio_read, fd, buff, len, offset, callback);
 }
 
 int aio_write(int fd, void *buff, size_t len, off_t offset,
               IOCallback *callback) {
+  printf("[aio_write]\n"); fflush(stdout); 
   return aioSkeletonFunction(::aio_write, fd, buff, len, offset, callback);
 }
 }
