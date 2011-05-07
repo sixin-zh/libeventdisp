@@ -24,7 +24,6 @@ int socketSetBlockingAndTimeout(int sockfd) {
 }
 
 
-
 ErrConn svr_conn_listen(Conn * &cn) {
   
   int listenfd;
@@ -93,7 +92,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
 
   // when accept limit exceeded
   while (MaxACCEPT < cn->csp.size()) {
-    if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %d\n", cn->csp.size()); // when fd limit exceeded
+    if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %zu\n", cn->csp.size()); // when fd limit exceeded
     usleep(ACSLEEPTIME_U);
   }
 
@@ -121,17 +120,17 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   if (DBGL >= 3) {
     struct sockaddr_in cl_addr; socklen_t cl_addrlen;
     getpeername(connfd,  (SVR_SA *) &cl_addr, &cl_addrlen);
-    printf("[svr_conn_accept] new socket accetped: svr=%x, peer=%x, cfd=%d, ip=%s:%d \n", cn, pn, connfd, inet_ntoa(cl_addr.sin_addr), ntohs(cl_addr.sin_port));
+    printf("[svr_conn_accept] new socket accetped: svr=%p, peer=%p, cfd=%d, ip=%s:%d \n", cn, pn, connfd, inet_ntoa(cl_addr.sin_addr), ntohs(cl_addr.sin_port));
   }
 
   pthread_mutex_lock(&(cn->pkgl));
   cn->csp.push_back(pn);                  // pooling
-  if (DBGL >= 2) {  printf("[svr_http_accept] new pool size %d\n", cn->csp.size()); }
+  if (DBGL >= 2) {  printf("[svr_http_accept] new pool size %zu\n", cn->csp.size()); }
   pthread_mutex_unlock(&(cn->pkgl));
 
   HPKG * pk = new HPKG(cn->csp.back());   // create HPKG (req)
 
-  if (DBGL >= 2) printf("[svr_conn_accept] svr=%x, peer=%x, hpkg=%x\n", cn, *(pk->cpn), pk);
+  if (DBGL >= 2) printf("[svr_conn_accept] svr=%p, peer=%p, hpkg=%p\n", cn, *(pk->cpn), pk);
 
   // read header
   if (svr_http_read(pk) == EHTTP_READ) return ERRCONN_AC;
@@ -173,7 +172,7 @@ ErrConn svr_conn_close(Conn * &cn) {
   if (DBGL >= 5) { printf("[svr_conn]"); fflush(stdout); }
   if (DBGL >= 5) printf("[svr_conn]");
 
-  if (DBGL >= 3) printf("[svr_conn_close] close cn=%x\n", cn);
+  if (DBGL >= 3) printf("[svr_conn_close] close cn=%p\n", cn);
   if (DBGL >= 0) assert(cn != NULL);
   
   if (cn == NULL) return ERRCONN_CO; // ! this should never happen for websvrd
@@ -197,11 +196,11 @@ ErrConn svr_conn_close(Conn * &cn) {
   delete cn; cn = NULL;
 
   // remove from parent pool
-  if (DBGL >= 3) printf("[svr_conn_close] remove cn=%x from svr pool = %x\n", cn, pn);
+  if (DBGL >= 3) printf("[svr_conn_close] remove cn=%p from svr pool = %p\n", cn, pn);
   if ((&pn != NULL) && (pn != NULL)) {
     pthread_mutex_lock(&(pn->pkgl));
     pn->csp.remove(cn);
-    if (DBGL >= 2) { printf("[svr_conn_close] conn removed ->  pool size = %d\n", pn->csp.size());  fflush(stdout); }
+    if (DBGL >= 2) { printf("[svr_conn_close] conn removed ->  pool size = %zu\n", pn->csp.size());  fflush(stdout); }
     pthread_mutex_unlock(&(pn->pkgl));
   }
   

@@ -36,16 +36,15 @@ static const char * _sline_404[2] = {"HTTP/1.0 404 Not Found"  , "HTTP/1.1 404 N
 ErrHTTP svr_http_read(HPKG * &pk) {
 
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_http]");
 
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * &cn = *(pk->cpn);
 
-  if (DBGL >= 4) printf("[svr_http_read] hpkg=%x, cn=%x\n",pk, cn);
+  if (DBGL >= 4) printf("[svr_http_read] hpkg=%p, cn=%p\n",pk, cn);
 
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_R)) {
-    if (DBGL >= 1) printf("[svr_http_read] conn error, hpkg=%x, cn=%x\n",pk,cn);    
+    if (DBGL >= 1) printf("[svr_http_read] conn error, hpkg=%p, cn=%p\n",pk,cn);    
     return svr_http_final(pk); }
 
   pk->hst = HS_READING;
@@ -60,7 +59,7 @@ ErrHTTP svr_http_read(HPKG * &pk) {
   IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
   IOCallback    * ioCB  = new IOCallback(okCB, errCB, cn->cfd);  // PALL: SIDEEFFECT ON LINE 172,  // TOTO: RReadTaskID
 
-  if (DBGL >= 5) { printf("[svr_http_read] call aio_read, pk=%x, cn=%x, buf=%x\n", pk, cn, pk->chead.p); fflush(stdout); }
+  if (DBGL >= 5) { printf("[svr_http_read] call aio_read, pk=%p, cn=%p, buf=%p\n", pk, cn, pk->chead.p); fflush(stdout); }
   int nret = aio_read(cn->cfd, static_cast<void *> (pk->chead.p), MAXRH-1, 0, ioCB); // end with '\0' 
   if (DBGL >= 0) assert(nret == 0);
 
@@ -78,16 +77,15 @@ ErrHTTP svr_http_read(HPKG * &pk) {
 ErrHTTP svr_http_parse(HPKG * &pk) {
 
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_http]");
 
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * &cn = *(pk->cpn);
 
-  if (DBGL >= 4) printf("[svr_http_parse] hpkg=%x, cn=%x\n",pk,cn);    
+  if (DBGL >= 4) printf("[svr_http_parse] hpkg=%p, cn=%p\n",pk, cn);    
 
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1)  printf("[svr_http_parse] conn error, hpkg=%x\n", pk); 
+    if (DBGL >= 1)  printf("[svr_http_parse] conn error, hpkg=%p\n", pk); 
     return svr_http_final(pk); } 
 
   pk->hst = HS_PARSING;
@@ -136,7 +134,7 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 	//if (DBGL >= 6) printf("[svr_http_parse] ver: %s [%s]\n", gk->ver.p, ph);
       } // else bad GET request (no uri or no ver)
 
-      if (DBGL >= 5) printf("[svr_http_parse] new hpkg=%x, cn=%x, met=%s, ver=%s, uri=%s\n", gk, cn, gk->met.p, gk->ver.p, gk->uri.p);
+      if (DBGL >= 5) printf("[svr_http_parse] new hpkg=%p, cn=%p, met=%s, ver=%s, uri=%s\n", gk, cn, gk->met.p, gk->ver.p, gk->uri.p);
 
       // ordering
       gk->ppg = pk;   // parent
@@ -163,19 +161,19 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
   else { // NO GET TASK !
     // continue "reading"
     if (((*(cn->cpp))->csp.size()) <= MaxKeepAlive) {
-      if (DBGL >= 4) printf("[svr_http_parse] keepalive, current pool size = %d\n", (*(cn->cpp))->csp.size());
+      if (DBGL >= 4) printf("[svr_http_parse] keepalive, current pool size = %zu\n", (*(cn->cpp))->csp.size());
       bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, pk), cn->cfd));      // TOTO: RReadTaskID
       if (DBGL >= 0) assert(bret == true); // { 
-	// if (DBGL >= 1) printf("[svr_http_parse] dispatcher error, hpkg=%x\n", pk); 
+	// if (DBGL >= 1) printf("[svr_http_parse] dispatcher error, hpkg=%p\n", pk); 
 	// return svr_http_final_aio(pk, cn->cfd, 0); }
     } else {
-      if (DBGL >= 2) printf("[svr_http_parse] max pooled, cn=%x, hpkg=%x\n", cn, pk); 
+      if (DBGL >= 2) printf("[svr_http_parse] max pooled, cn=%p, hpkg=%p\n", cn, pk); 
       return svr_http_final_aio(pk, cn->cfd, 0);
     }
   }
   
   //  pthread_mutex_lock(&((*(cn->cpp))->pkgl));
-  //  printf("svr_http_parse] conn pool size %d\n", (*(cn->cpp))->csp.size());
+  //  printf("svr_http_parse] conn pool size %zu\n", (*(cn->cpp))->csp.size());
   //  pthread_mutex_unlock(&((*(cn->cpp))->pkgl));
 
   return EHTTP_OK;
@@ -187,17 +185,16 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbytes) {
 
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_http]");
   
   if (DBGL >= 0) assert(pk != NULL);
   if (DBGL >= 0) assert(pk->chead.p == buf);
 
   Conn * &cn = *(pk->cpn);
 
-  if (DBGL >= 4) printf("[svr_http_parse_aio] new request (hpkg=%x, cn=%x, fd=%d, nbytes=%d):\n%s\n", pk, cn, fd, nbytes, pk->chead.p);
+  if (DBGL >= 4) printf("[svr_http_parse_aio] new request (hpkg=%p, cn=%p, fd=%d, nbytes=%zu):\n%s\n", pk, cn, fd, nbytes, pk->chead.p);
 
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1) printf("[svr_http_parse_aio] conn error, hpkg=%x\n", pk); 
+    if (DBGL >= 1) printf("[svr_http_parse_aio] conn error, hpkg=%p\n", pk); 
     return svr_http_final(pk); }
 
   pk->hst = HS_PARSING;
@@ -208,7 +205,7 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
 
   // continue reading new request if not EOF
   if (nbytes == 0) { // EOF
-    if (DBGL >= 1) printf("[svr_http_parse_aio] zero bytes read, cn=%x, hpkg=%x\n", cn, pk); 
+    if (DBGL >= 1) printf("[svr_http_parse_aio] zero bytes read, cn=%p, hpkg=%p\n", cn, pk); 
     return svr_http_final_aio(pk, fd, 0);
   }
   else {
@@ -225,7 +222,7 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
 
   if (DBGL >= 0) assert(pk != NULL);
-  if (DBGL >= 4) printf("[svr_http_header_rio] hpkg=%x, cn=%x, uri=%s, hfd=%d\n", pk, *(pk->cpn), pk->uri.p, pk->hfd);
+  if (DBGL >= 4) printf("[svr_http_header_rio] hpkg=%p, cn=%p, uri=%s, hfd=%d\n", pk, *(pk->cpn), pk->uri.p, pk->hfd);
 
   pk->hst = HS_FETCHING;
   pk->wst = WS_HEAD;
@@ -235,7 +232,7 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
 
     if (pk->hfd < 0) { // 404
 
-      if (DBGL >= 4) printf("[svr_http_header_rio] file open 404, pk=%x, hfd=%x\n", pk, pk->hfd);
+      if (DBGL >= 4) printf("[svr_http_header_rio] file open 404, pk=%p, hfd=%d\n", pk, pk->hfd);
       pk->hsn = N_404;
 
       // fetch
@@ -251,7 +248,7 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
     }
     else {             // 200
 
-      if (DBGL >= 4) printf("[svr_http_header_rio] file open 200, pk=%x, hfd=%x\n", pk, pk->hfd);
+      if (DBGL >= 4) printf("[svr_http_header_rio] file open 200, pk=%p, hfd=%d\n", pk, pk->hfd);
       pk->hsn = N_200;
 
       // FETCH
@@ -272,13 +269,13 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
       tm * ptm;
       char datestr[MAXWHL];
       ptm = gmtime(&(pk->tr_current_time));
-      strftime(datestr, MAXWHL-1, "%a, %d %b %Y %X GMT", ptm);
+      strftime(datestr, MAXWHL-1, "%a, %zu %b %Y %p GMT", ptm);
 
       char lastmod[MAXWHL];
       ptm = gmtime(&(pk->tr_last_modify_time));
-      strftime(lastmod, MAXWHL-1, "%a, %d %b %Y %X GMT", ptm);      
+      strftime(lastmod, MAXWHL-1, "%a, %zu %b %Y %p GMT", ptm);      
 
-      pk->chead.n = snprintf(pk->chead.p, MAXWH-1, "%s%sDate: %s%sServer: %s%sLast-Modified: %s%sContent-Type: %s%sContent-Length: %d%s%s", 
+      pk->chead.n = snprintf(pk->chead.p, MAXWH-1, "%s%sDate: %s%sServer: %s%sLast-Modified: %s%sContent-Type: %s%sContent-Length: %zu%s%s", 
 			     _sline_200[pk->vern],       // Status line
 			     CRLF, 
 			     datestr,                    // Date
@@ -293,7 +290,7 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
 			     CRLF, 
 			     CRLF);                      // EOH
 
-      if (DBGL >= 5) printf("[svr_http_header_rio] hpkg=%x, head[%d] = \n%s\n", pk, pk->chead.n, pk->chead.p);
+      if (DBGL >= 5) printf("[svr_http_header_rio] hpkg=%p, head[%zu] = \n%s\n", pk, pk->chead.n, pk->chead.p);
 
       // PUT HEAD
       bool isput = _cache.put(pk->headkey.p, pk->chead.p, pk->chead.n);
@@ -313,10 +310,9 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
 ErrHTTP svr_http_header_to_body_aio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_http]");
 
   if (DBGL >= 0) assert(pk != NULL);
-  if (DBGL >= 4) printf("[svr_http_header_to_body_aio] hpkg=%x, cn=%x, hsn=%d\n", pk, *(pk->cpn),  pk->hsn);
+  if (DBGL >= 4) printf("[svr_http_header_to_body_aio] hpkg=%p, cn=%p, hsn=%d\n", pk, *(pk->cpn),  pk->hsn);
 
   pk->hst = HS_UNKNOWN;
   pk->wst = WS_HEAD;
@@ -338,11 +334,11 @@ ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
 
   Conn * &cn = (*pk->cpn);
 
-  if (DBGL >= 6) printf("[svr_http_header_wio] hpkg=%x, cn=%x, data=%s\n", pk, cn, cd.data);
-  else if (DBGL >= 4) printf("[svr_http_header_wio] hpkg=%x, cn=%x, nbytes=%d\n", pk, cn, cd.size);
+  if (DBGL >= 6) printf("[svr_http_header_wio] hpkg=%p, cn=%p, data=%s\n", pk, cn, cd.data);
+  else if (DBGL >= 4) printf("[svr_http_header_wio] hpkg=%p, cn=%p, nbytes=%zu\n", pk, cn, cd.size);
 
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1) printf("[svr_http_header_wio] conn error, hpkg=%x\n", pk); 
+    if (DBGL >= 1) printf("[svr_http_header_wio] conn error, hpkg=%p\n", pk); 
     return svr_http_final(pk); }
 
   pk->hst = HS_WRITING;
@@ -372,16 +368,16 @@ ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
 // Get Head [CacheTaskID]
 ErrHTTP svr_http_header(HPKG * &pk) {
 
-  if (DBGL >= 5) printf("[svr_http]");
+  if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
 
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * &cn = (*pk->cpn);
 
-  if (DBGL >= 4) printf("[svr_http_header] hpkg=%x, cn=%x\n", pk, cn);
+  if (DBGL >= 4) printf("[svr_http_header] hpkg=%p, cn=%p\n", pk, cn);
 
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1) printf("[svr_http_header] conn error, hpkg=%x \n", pk); 
+    if (DBGL >= 1) printf("[svr_http_header] conn error, hpkg=%p \n", pk); 
     return svr_http_final(pk); }
 
   pk->hst = HS_FETCHING;
@@ -409,7 +405,6 @@ ErrHTTP svr_http_header(HPKG * &pk) {
 ErrHTTP svr_http_write_400(HPKG * &pk) {
 
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_http]"); 
  
   if (DBGL >= 1) assert(pk != NULL);
   
@@ -420,7 +415,7 @@ ErrHTTP svr_http_write_400(HPKG * &pk) {
   Conn * &cn = (*pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
 
-  if (DBGL >= 2) printf("[svr_http_write_400] hpkg=%x, cn=%x\n", pk, cn);
+  if (DBGL >= 2) printf("[svr_http_write_400] hpkg=%p, cn=%p\n", pk, cn);
 
   IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_body_rio, pk, _1, _2, _3));
   IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
@@ -440,16 +435,15 @@ ErrHTTP svr_http_write_400(HPKG * &pk) {
 ErrHTTP svr_http_fetch(HPKG * &pk) { 
 
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_http]");
 
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * &cn = (*pk->cpn);
 
-  if (DBGL >= 2) printf("[svr_http_fetch] hpkg=%x, cn=%x, met=%s, ver=%s, uri=%s\n", pk, cn, pk->met.p, pk->ver.p, pk->uri.p);
+  if (DBGL >= 2) printf("[svr_http_fetch] hpkg=%p, cn=%p, met=%s, ver=%s, uri=%s\n", pk, cn, pk->met.p, pk->ver.p, pk->uri.p);
 
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1) printf("[svr_http_fetch] pk=%x, cn=%x, conn error\n", pk, cn); 
+    if (DBGL >= 1) printf("[svr_http_fetch] pk=%p, cn=%p, conn error\n", pk, cn); 
     return svr_http_final(pk); }
 
   pk->hst = HS_FETCHING;
@@ -477,11 +471,10 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
 ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
 
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_http]");
 
   if (DBGL >= 0) assert(pk != NULL);
 
-  if (DBGL >= 1)  printf("[svr_http_body_wio] hpkg=%x, cn=%x\n", pk, (*pk->cpn)); 
+  if (DBGL >= 1)  printf("[svr_http_body_wio] hpkg=%p, cn=%p\n", pk, (*pk->cpn)); 
 
   // cancel(ed)
   if (cd.data == NULL) {
@@ -491,11 +484,11 @@ ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
   // put(ed)
   Conn * &cn = (*pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W))  { 
-    if (DBGL >= 1)  printf("[svr_http_body_wio] hpkg=%x, cn=%x, conn error\n", pk, *(pk->cpn)); 
+    if (DBGL >= 1)  printf("[svr_http_body_wio] hpkg=%p, cn=%p, conn error\n", pk, *(pk->cpn)); 
     return svr_http_final_aio(pk, cn->cfd, 0); }
 
-  if (DBGL >= 6) printf("[svr_http_body_wio] hpkg=%x, cn=%x, nbytes=%d, data=%s\n", pk, cn, cd.size, cd.data);
-  else if (DBGL >= 3) printf("[svr_http_body_wio] hpkg=%x, cn=%x, nbytes=%d\n", pk, cn, cd.size);
+  if (DBGL >= 6) printf("[svr_http_body_wio] hpkg=%p, cn=%p, nbytes=%zu, data=%s\n", pk, cn, cd.size, cd.data);
+  else if (DBGL >= 3) printf("[svr_http_body_wio] hpkg=%p, cn=%p, nbytes=%zu\n", pk, cn, cd.size);
 
   pk->hst = HS_WRITING;
   pk->wst = WS_BODY;
@@ -514,12 +507,11 @@ ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
 ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_http]");
 
-  if (DBGL >= 4) printf("[svr_http_body_rio] hpkg=%x, wst=%d\n", pk, pk->wst);
+  if (DBGL >= 4) printf("[svr_http_body_rio] hpkg=%p, wst=%d\n", pk, pk->wst);
 
   if (pk->wst == WS_BODY) {
-    if (DBGL >= 2) printf("[svr_http_body_rio] done with hpkg %x, body key =%s\n", pk, pk->bodykey.p); 
+    if (DBGL >= 2) printf("[svr_http_body_rio] done with hpkg %p, body key =%s\n", pk, pk->bodykey.p); 
     if (pk->bodykey.p != NULL) _cache.doneWith(pk->bodykey.p);
     if (nbytes > 0) {    // ! EOF     
       pk->tr_offset += nbytes;
@@ -539,7 +531,8 @@ ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
 ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 4) printf("[svr_http_body_pio] hpkg=%x, put key=%s, size=%d, data=%s\n", pk, pk->bodykey.p, nbytes,  buf);
+
+  if (DBGL >= 4) printf("[svr_http_body_pio] hpkg=%p, put key=%s, size=%zu, data=%s\n", pk, pk->bodykey.p, nbytes, (char *) buf);
 
   bool iscac = _cache.put(pk->bodykey.p, static_cast<const char *> (buf), nbytes); 
   if (DBGL >= 0) assert(iscac == true);
@@ -553,14 +546,13 @@ ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
 ErrHTTP svr_http_body(HPKG * &pk) {
   
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_http]");
 
   if (DBGL >= 0) assert(pk != NULL);
-  if (DBGL >= 4) printf("[svr_http_body] hpkg=%x, wst=%d\n", pk, pk->wst);
+  if (DBGL >= 4) printf("[svr_http_body] hpkg=%p, wst=%d\n", pk, pk->wst);
 
   Conn * &cn = (*pk->cpn);
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) {
-    if (DBGL >= 1) printf("[svr_http_body] conn error, hpkg=%x\n", pk);
+    if (DBGL >= 1) printf("[svr_http_body] conn error, hpkg=%p\n", pk);
     return svr_http_final(pk); }
 
   pk->hst = HS_FETCHING;
@@ -568,8 +560,8 @@ ErrHTTP svr_http_body(HPKG * &pk) {
   
   // new key
   if (pk->bodykey.p == NULL) { pk->bodykey.p = (char *) malloc(MAXKEYS); pk->bodykey.cached = false; pk->bodykey.p[MAXKEYS-1] = '\0'; }
-  pk->bodykey.n = snprintf(pk->bodykey.p, MAXKEYS, "%s#%d", pk->uri.p, pk->tr_offset);
-  if (DBGL >= 3) printf("[svr_http_body] use body key: %s [%d]\n", pk->bodykey.p, pk->bodykey.n);
+  pk->bodykey.n = snprintf(pk->bodykey.p, MAXKEYS, "%s#%zu", pk->uri.p, pk->tr_offset);
+  if (DBGL >= 3) printf("[svr_http_body] use body key: %s [%zu]\n", pk->bodykey.p, pk->bodykey.n);
 
   // get
   CacheCallback * cCB = new CacheCallback(BIND(svr_http_body_wio, pk, _1));
@@ -605,7 +597,7 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
 
   Conn * & cn = *(pk->cpn); 
 
-  if (DBGL >= 2) printf("[svr_http_final_aio] hpkg=%x, cn=%x,  cn->cst=%d, error code=%d\n", pk, cn, cn->cst, errcode);
+  if (DBGL >= 2) printf("[svr_http_final_aio] hpkg=%p, cn=%p, cn->cst=%d, error code=%d\n", pk, cn, cn->cst, errcode);
 
   if (DBGL >= 0) assert(cn->cst != CS_CLOSING);
 
@@ -637,13 +629,13 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
     // doneWith
     if ((pk->hst == HS_WRITING) && (pk->wst == WS_HEAD))  {
       if (DBGL >= 0) assert(pk->headkey.p != NULL);
-      if (DBGL >= 1) printf("[svr_http_final_aio] done with hpkg %x, head key =%s\n", pk, pk->headkey.p); 
+      if (DBGL >= 1) printf("[svr_http_final_aio] done with hpkg %p, head key =%s\n", pk, pk->headkey.p); 
       _cache.doneWith(pk->headkey.p);
     }
 
     if ((pk->hst == HS_WRITING) && (pk->wst == WS_BODY))  {
       if (DBGL >= 0) assert(pk->bodykey.p != NULL);
-      if (DBGL >= 1) printf("[svr_http_final_aio] done with hpkg %x, body key =%s\n", pk, pk->bodykey.p); 
+      if (DBGL >= 1) printf("[svr_http_final_aio] done with hpkg %p, body key =%s\n", pk, pk->bodykey.p); 
       _cache.doneWith(pk->bodykey.p);
     }
   }
@@ -655,7 +647,6 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
 // TODO: cfd
 ErrHTTP svr_http_final(HPKG * &pk) {
 
-  
   if (DBGL >= 5) { printf("[svr_http]"); fflush(stdout); }
 
   if (DBGL >= 0) assert(pk != NULL);
@@ -665,7 +656,7 @@ ErrHTTP svr_http_final(HPKG * &pk) {
   HPKG *  park = pk->ppg;
   HPKG *  fget = pk->nsg;
 
-  if (DBGL >= 3) printf("[svr_http_final] hpkg=%x, fget=%x, park=%x, cn=%x\n", pk, fget, park, cn);
+  if (DBGL >= 3) printf("[svr_http_final] hpkg=%p, fget=%p, park=%p, cn=%p\n", pk, fget, park, cn);
 
   delete pk;
 
@@ -675,11 +666,11 @@ ErrHTTP svr_http_final(HPKG * &pk) {
   else if (fget == NULL) { // last GET, continue "reading"
     park->lcg = NULL;
     if (((*(cn->cpp))->csp.size()) <= MaxKeepAlive) {
-      if (DBGL >= 2) printf("[svr_http_final] keepalive cn=%x, hpkg=%x, current pool size = %d\n", cn, park, (*(cn->cpp))->csp.size());
+      if (DBGL >= 2) printf("[svr_http_final] keepalive cn=%p, hpkg=%p, current pool size = %zu\n", cn, park, (*(cn->cpp))->csp.size());
       bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, park), cn->cfd));  // TOTO: RReadTaskID
       if (DBGL >= 0) assert(bret == true);
     } else {
-      if (DBGL >= 2) printf("[svr_http_final] \t max pooled, cn=%x, hpkg=%x\n", cn, park); 
+      if (DBGL >= 2) printf("[svr_http_final] \t max pooled, cn=%p, hpkg=%p\n", cn, park); 
       svr_http_final(park);
     }
   }
