@@ -12,27 +12,27 @@
 
 
 // server debug (verbal) level 0,1,2,3,4,...
-#define DBGL 5
+#define DBGL 4
 #include <assert.h>
 #include <errno.h>
 
 
 // Pool for general resource management
-#include <list>
-template<class T>
-struct POOL {
-  typedef std::list<T> L;
-};
+/* #include <list> */
+/* template<class T> */
+/* struct POOL { */
+/*   typedef std::list<T> L; */
+/* }; */
 
 
 // Parameters
 #define MaxCSL  511   // max backlog: SOMAXCONN [socket dependent]
 
-#define MaxKeepAlive 150
+//#define MaxKeepAlive 150
 #define ReadTimeoutUSEC 0
 #define ReadTimeoutSEC 30
 
-#define MaxACCEPT 100
+#define MaxACCEPT 600
 #define ACSLEEPTIME_U 500000
 
 #define MAXCSIZE 65536 // cache size
