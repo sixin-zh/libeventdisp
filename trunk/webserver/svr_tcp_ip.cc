@@ -170,8 +170,7 @@ ErrConn svr_conn_connect(Conn * &pn) {
 // if conn is not closed (by client or server), then close it and all sub-conns ..
 ErrConn svr_conn_close(Conn * &cn) {
 
-  if (DBGL >= 5) { printf("[svr_conn]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_conn] close \n");
+  if (DBGL >= 5) { printf("[svr_conn] close"); fflush(stdout); }
 
   if (DBGL >= 3) printf("[svr_conn_close] close cn=%p\n", cn);
   if (DBGL >= 0) assert(cn != NULL);
@@ -194,19 +193,18 @@ ErrConn svr_conn_close(Conn * &cn) {
     cn->cst = CS_CLOSED;
     if (DBGL >= 3) { printf("[svr_conn_close] socket closed = %d \n", connfd); fflush(stdout); }
   }
-  Conn * & pn = cn->cpp; // parent
+  Conn * pn = cn->cpp; // parent
   delete cn; cn = NULL;
 
   // remove from parent pool
   if (DBGL >= 5) printf("[svr_conn] remove from pool \n");
-  if (DBGL >= 3) { printf("[svr_conn_close] remove cn=%p from svr pool = %p\n", cn, pn);  fflush(stdout); }
+  if (DBGL >= 3) { printf("[svr_conn_close] removed from svr pool = %p\n", pn);  fflush(stdout); }
   if ((&pn != NULL) && (pn != NULL)) {
     pthread_mutex_lock(&(pn->lock));
     --pn->nc;
-    //    pn->csp.remove(cn);
-    if (DBGL >= 2) { printf("[svr_conn_close] conn removed ->  pool size = %zu\n", pn->nc);  fflush(stdout); }
     pthread_mutex_unlock(&(pn->lock));
   }
-  
+
+  if (DBGL >= 2) { printf("[svr_conn_close] conn removed ->  pool size = %zu\n", pn->nc);  fflush(stdout); }  
   return ERRCONN_OK;
 }
