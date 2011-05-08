@@ -3,11 +3,11 @@
 
 #include <svr_tcp_ip.h>
 
-#define MAXRH   8192
-#define MAXWH   8192
-#define MAXWHL  256     // max 32 lines for head
-#define MAXWB   1048576 // 65536  // hex: 10000
-#define MAXKEYS 256
+/* #define MAXRH   8192 */
+/* #define MAXWH   8192 */
+/* #define MAXWHL  256     // max 32 lines for head */
+/* #define MAXWB   1048576 // 65536  // hex: 10000 */
+/* #define MAXKEYS 256 */
 
 // state
 enum HttpSN {
@@ -59,8 +59,7 @@ struct HPKG {
 
   HttpSN   hsn;
   HttpST   hst;
-  HttpWST  wst;
-  //  TransEnc enc;
+  HttpWST  wst; //  TransEnc enc;
 
   ssize_t         vern; // rep version (1 <- HTTP/1.1; 0 <- HTTP/1.0)
   struct charn    ver;  // req version
@@ -71,27 +70,24 @@ struct HPKG {
   struct charn    chead;  charn headkey;
   struct charn    cbody;  charn bodykey;
 
-  int hfd; 
+  int hfd;              // fd for local file
 
   off_t    tr_offset;           // nbytes read/writtern
   size_t   tr_nbytes;           // total size
   time_t   tr_current_time;
   time_t   tr_last_modify_time; // TOTO: MIME TYPE
 
-  Conn **  cpn;                 // hpkg -> conn
+  Conn *  cpn;                  // hpkg -> conn
 
-  HPKG *  ppg;                 // parent
-  HPKG *  lcg;                 // last-child
-  HPKG *  nsg;                 // next-slibling
+  HPKG *  ppg;                  // parent
+  HPKG *  lcg;                  // last-child
+  HPKG *  nsg;                  // next-slibling
 
   HPKG() { cpn = NULL; hst = HS_UNKNOWN; vern = 1; hfd = -1; tr_offset = 0; ppg = NULL; lcg = NULL; nsg = NULL; } // enc = TE_UNO;
 
   HPKG(Conn * & cn) {
-    cpn = &cn;
-    //    pthread_mutex_lock(&(cn->pkgl));
-    //    ++cn->pkgc;
-    //    pthread_mutex_unlock(&(cn->pkgl));
-    hst = HS_UNKNOWN; // enc = TE_UNO; 
+    cpn = cn;
+    hst = HS_UNKNOWN; // enc = TE_UNO;
     vern = 1; hfd = -1; 
     tr_offset = 0; tr_nbytes = 0; 
     ppg = NULL; lcg = NULL; nsg = NULL;

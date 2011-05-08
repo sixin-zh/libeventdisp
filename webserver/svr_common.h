@@ -32,7 +32,7 @@ struct POOL {
 #define ReadTimeoutUSEC 0
 #define ReadTimeoutSEC 30
 
-#define MaxACCEPT 600
+#define MaxACCEPT 100
 #define ACSLEEPTIME_U 500000
 
 #define MAXCSIZE 65536 // cache size

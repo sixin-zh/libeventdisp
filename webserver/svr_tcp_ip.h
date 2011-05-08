@@ -31,33 +31,31 @@ enum ConnST {
   CS_LISTENING,
   CS_CONNECTING,
   CS_CONNECTED,
-  CS_CLOSING_R, // read 
-  CS_CLOSING_W, // write
+  CS_CLOSING_R, // read error
+  CS_CLOSING_W, // write error
   CS_CLOSING,
   CS_CLOSED
 };
 
 
-// TODO: init pool size
 // Conn can be understood as Session Layer in OSI model 
-// [unix/socket dependent]
 struct Conn {
   ConnST            cst;   // state
-  int               cfd;   // fd (socket, file)
+  int               cfd;   // fd [socket]
   sockaddr_in       csa;   // socket address (TODO: cast to sockaddr)
-  POOL<Conn*>::L    csp;   // pool for child-connections
-  Conn **           cpp;   // parent connection
+  //  POOL<Conn*>::L    csp;   // pool for child-connections
+  Conn *            cpp;   // parent connection
 
-  pthread_mutex_t   pkgl;  // pkgs/pool lock
-  //  size_t            pkgc;  // pkgs counter
+  pthread_mutex_t   lock;  // connection lock
+  size_t            nc;    // number of connections
 
   Conn() {
-    cpp = NULL; // pkgc = 0; 
-    pthread_mutex_init(&pkgl, NULL); 
+    cpp = NULL; nc = 0; 
+    pthread_mutex_init(&lock, NULL); 
   }
 
   ~Conn() {
-    pthread_mutex_destroy(&pkgl);
+    pthread_mutex_destroy(&lock);
   }
 };
 

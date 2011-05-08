@@ -3,6 +3,8 @@
 
 #include <algorithm>
 
+#include <stdio.h>
+
 namespace nyu_libeventdisp {
 // Notes:
 // To avoid deadlock, locks should be acquired in the following order:
@@ -24,6 +26,9 @@ MPEventDispatcher::~MPEventDispatcher() {
 }
 
 bool MPEventDispatcher::enqueueTask(UnitTask *newTask) {
+
+  printf("[dispatcher] enqueueTask\n"); fflush(stdout); 
+
   size_t taskDestination;
   
   {
@@ -57,6 +62,9 @@ void MPEventDispatcher::resume(void) {
 }
 
 bool MPEventDispatcher::busy(void) {
+
+  printf("[dispatcher] busy\n"); fflush(stdout); 
+ 
   for (std::vector<EventDispatcher*>::iterator iter = dispatchers_.begin();
        iter != dispatchers_.end(); ++iter) {
     if ((*iter)->busy()) {

@@ -91,8 +91,8 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   if ((cn==NULL) || (cn->cst != CS_LISTENING)) return ERRCONN_AC;
 
   // when accept limit exceeded
-  while (MaxACCEPT < cn->csp.size()) {
-    if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %zu\n", cn->csp.size()); // when fd limit exceeded
+  while (MaxACCEPT < cn->nc) {
+    if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %zu\n", cn->nc); // when fd limit exceeded
     usleep(ACSLEEPTIME_U);
   }
 
@@ -114,7 +114,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   pn = new Conn;
   pn->cfd = connfd;
   pn->cst = CS_CONNECTED;
-  pn->cpp = &cn; // conn -> parent conn
+  pn->cpp = cn; // conn -> parent conn
 
   // ip track
   if (DBGL >= 3) {
@@ -123,14 +123,15 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
     printf("[svr_conn_accept] new socket accetped: svr=%p, peer=%p, cfd=%d, ip=%s:%d \n", cn, pn, connfd, inet_ntoa(cl_addr.sin_addr), ntohs(cl_addr.sin_port));
   }
 
-  pthread_mutex_lock(&(cn->pkgl));
-  cn->csp.push_back(pn);                  // pooling
-  if (DBGL >= 2) {  printf("[svr_http_accept] new pool size %zu\n", cn->csp.size()); }
-  pthread_mutex_unlock(&(cn->pkgl));
+  pthread_mutex_lock(&(cn->lock));
+  ++cn->nc;
+  //  cn->csp.push_back(pn);                  // pooling
+  if (DBGL >= 2) {  printf("[svr_http_accept] new pool size %zu\n", cn->nc); }
+  pthread_mutex_unlock(&(cn->lock));
 
-  HPKG * pk = new HPKG(cn->csp.back());   // create HPKG (req)
+  HPKG * pk = new HPKG(pn);   // create HPKG (req)
 
-  if (DBGL >= 2) printf("[svr_conn_accept] svr=%p, peer=%p, hpkg=%p\n", cn, *(pk->cpn), pk);
+  if (DBGL >= 2) printf("[svr_conn_accept] svr=%p, peer=%p, hpkg=%p\n", cn, pk->cpn, pk);
 
   // read header
   if (svr_http_read(pk) == EHTTP_READ) return ERRCONN_AC;
@@ -170,38 +171,41 @@ ErrConn svr_conn_connect(Conn * &pn) {
 ErrConn svr_conn_close(Conn * &cn) {
 
   if (DBGL >= 5) { printf("[svr_conn]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_conn]");
+  if (DBGL >= 5) printf("[svr_conn] close \n");
 
   if (DBGL >= 3) printf("[svr_conn_close] close cn=%p\n", cn);
   if (DBGL >= 0) assert(cn != NULL);
   
   if (cn == NULL) return ERRCONN_CO; // ! this should never happen for websvrd
   
-  // close all sub connections of cn (if exist)
-  POOL<Conn*>::L::iterator itr = cn->csp.begin();
-  while (itr != cn->csp.end()) {
-    svr_conn_close(*itr++);
-  }
+  // // close all sub connections of cn (if exist)
+  // POOL<Conn*>::L::iterator itr = cn->csp.begin();
+  // while (itr != cn->csp.end()) {
+  //   svr_conn_close(*itr++);
+  // }
 
-  // close itself
+  // close itself (socket)
+  if (DBGL >= 5) printf("[svr_conn] close socket \n");
   int connfd = cn->cfd;
   if (close(connfd) < 0) {
-    if (DBGL >= 1) printf("[svr_conn_close] close sockek failed.\n");
+    if (DBGL >= 1) { printf("[svr_conn_close] close sockek failed.\n");  fflush(stdout); }
     return ERRCONN_CL;
   } else {
     cn->cst = CS_CLOSED;
-    if (DBGL >= 3) printf("[svr_conn_close] socket closed = %d \n", connfd);
+    if (DBGL >= 3) { printf("[svr_conn_close] socket closed = %d \n", connfd); fflush(stdout); }
   }
-  Conn * & pn = *cn->cpp;
+  Conn * & pn = cn->cpp; // parent
   delete cn; cn = NULL;
 
   // remove from parent pool
-  if (DBGL >= 3) printf("[svr_conn_close] remove cn=%p from svr pool = %p\n", cn, pn);
+  if (DBGL >= 5) printf("[svr_conn] remove from pool \n");
+  if (DBGL >= 3) { printf("[svr_conn_close] remove cn=%p from svr pool = %p\n", cn, pn);  fflush(stdout); }
   if ((&pn != NULL) && (pn != NULL)) {
-    pthread_mutex_lock(&(pn->pkgl));
-    pn->csp.remove(cn);
-    if (DBGL >= 2) { printf("[svr_conn_close] conn removed ->  pool size = %zu\n", pn->csp.size());  fflush(stdout); }
-    pthread_mutex_unlock(&(pn->pkgl));
+    pthread_mutex_lock(&(pn->lock));
+    --pn->nc;
+    //    pn->csp.remove(cn);
+    if (DBGL >= 2) { printf("[svr_conn_close] conn removed ->  pool size = %zu\n", pn->nc);  fflush(stdout); }
+    pthread_mutex_unlock(&(pn->lock));
   }
   
   return ERRCONN_OK;

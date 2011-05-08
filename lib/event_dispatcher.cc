@@ -3,6 +3,8 @@
 #include "event_dispatcher.h"
 #include "thread.h"
 
+#include <stdio.h>
+
 namespace nyu_libeventdisp {
 
 // Notes:
@@ -33,6 +35,8 @@ EventDispatcher::~EventDispatcher() {
 bool EventDispatcher::enqueueTask(UnitTask *newTask) {
   ScopedLock scopedQueue(&queueMutex_);
 
+  printf("[dispatcher_s] enqueueTask \n"); fflush(stdout); 
+
   // It's okay to accept the new task if the stop method was called beyond this
   // point. So no need to acquire stoppedMutex_.
   if (!isStopped_ && newTask != NULL) {
@@ -53,11 +57,17 @@ bool EventDispatcher::enqueueTask(UnitTask *newTask) {
 }
 
 void EventDispatcher::stop(void) {
+
+  printf("[dispatcher_s] stop \n"); fflush(stdout); 
+
   ScopedLock sl(&stoppedMutex_);
   isStopped_ = true;
 }
 
 void EventDispatcher::resume(void) {
+
+  printf("[dispatcher_s] resume \n"); fflush(stdout); 
+
   ScopedLock sl(&stoppedMutex_);
   if (!isDying_) {
     isStopped_ = false;
@@ -83,6 +93,8 @@ void EventDispatcher::eventLoop(void) {
   while (true) {
     UnitTask *nextTask;
     
+    printf("[dispatcher_s] while loop \n"); fflush(stdout); 
+  
     {
       ScopedLock sl(&queueMutex_);
       while (taskQueue_.empty() && !isDying_) {
@@ -117,6 +129,9 @@ void EventDispatcher::eventLoop(void) {
 }
 
 size_t EventDispatcher::pendingTasks(void) const {
+
+  printf("[dispatcher_s] pending tasks \n"); fflush(stdout); 
+
   ScopedLock sl(&taskCountMutex_);
   
   size_t count = 0;
