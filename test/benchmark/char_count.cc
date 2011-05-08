@@ -24,12 +24,12 @@ void reduce(CharCountBlock *count, size_t c) {
   count->inc(c, 1);
 }
 
-void map(char *randChars, CharCountBlock **count, size_t splitCount,
+void map(unsigned char *randChars, CharCountBlock **count, size_t splitCount,
          size_t splitSize, size_t start, size_t end, Semaphore *sem) {
   for (size_t x = start; x < end; x++) {
-    char current = randChars[x];
-    size_t destination = current / splitSize;
-    size_t offset = current % splitSize;
+    unsigned char current = randChars[x];
+    unsigned char destination = current / splitSize;
+    unsigned char offset = current % splitSize;
 
     Dispatcher::instance()->enqueue(
         new UnitTask(bind(reduce, count[destination], offset), destination));
@@ -71,16 +71,16 @@ void doTest(size_t splitSize, size_t splitCount,
             size_t generateCount, bool fitToCacheLine) {
   assert(splitCount <= 4);
   
-  const char MAX_CHAR = splitCount * splitSize;
+  const unsigned char MAX_CHAR = splitCount * splitSize;
   const size_t TEST_SIZE = splitCount * generateCount;
 
   // Initialize the pseudo-random array of characters. The initialization
   // code uses a very deterministic sequence since the character distribution
   // greatly impacts the queue size of each dispatcher (which in turn, would
   // affect the total run time)
-  char *randomChars = new char[TEST_SIZE]();
+  unsigned char *randomChars = new unsigned char[TEST_SIZE]();
   for (size_t x = 0; x < TEST_SIZE; x++) {
-    char nextChar = static_cast<char>(x % MAX_CHAR);
+    unsigned char nextChar = static_cast<char>(x % MAX_CHAR);
     randomChars[x] = nextChar;
   }
 
@@ -115,9 +115,9 @@ void doTest(size_t splitSize, size_t splitCount,
   }
 
   for (size_t x = 0; x < TEST_SIZE; x++) {
-    char current = randomChars[x];
-    size_t destination = current / splitSize;
-    size_t offset = current % splitSize;
+    unsigned char current = randomChars[x];
+    unsigned char destination = current / splitSize;
+    unsigned char offset = current % splitSize;
 
     countS[destination]->inc(offset, 1);
   }
