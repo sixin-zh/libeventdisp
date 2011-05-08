@@ -24,15 +24,15 @@ void reduce(CharCountBlock *count, size_t c) {
   count->inc(c, 1);
 }
 
-void map(char *randChars, CharCountBlock **count, size_t splitCount,
+void map(char *randChars, CharCountBlock *count, size_t splitCount,
          size_t splitSize, size_t start, size_t end, Semaphore *sem) {
   for (size_t x = start; x < end; x++) {
     char current = randChars[x];
     size_t destination = current / splitSize;
-    size_t offset = current % splitSize;
 
     Dispatcher::instance()->enqueue(
-        new UnitTask(bind(reduce, count[destination], offset), destination));
+        new UnitTask(bind(reduce, count, static_cast<size_t>(current)),
+                     destination));
   }
 
   for (size_t x = 0; x < splitCount; x++) {
@@ -41,25 +41,17 @@ void map(char *randChars, CharCountBlock **count, size_t splitCount,
 }
 
 // Checks if the contents of two char blocks are equal.
-bool checkEqual(CharCountBlock **count1, CharCountBlock **count2,
-                size_t splitCount) {
+bool checkEqual(CharCountBlock *count1, CharCountBlock *count2) {
   bool ret = true;
 
-  for (size_t partition = 0; partition < splitCount; partition++) {
-    CharCountBlock *block1 = count1[partition];
-    CharCountBlock *block2 = count2[partition];
-
-    assert(block1->size == block2->size);
-    const size_t size = block1->size;
+  assert(count1->size == count2->size);
+  const size_t size = count1->size;
     
-    for (size_t x = 0; x < size; x++) {
-      if (block1->get(x) != block2->get(x)) {
-          cerr << "Error at block[" << partition << "], "
-               << "element[" << x << "]: "
-               << block1->get(x) << " != " << block2->get(x) << endl;
-
-        ret = false;
-      }
+  for (size_t x = 0; x < size; x++) {
+    if (count1->get(x) != count2->get(x)) {
+      cerr << "Error at element[" << x << "]: "
+           << count1->get(x) << " != " << count2->get(x) << endl;
+      ret = false;
     }
   }
   
@@ -84,11 +76,8 @@ void doTest(size_t splitSize, size_t splitCount,
     randomChars[x] = nextChar;
   }
 
-  CharCountBlock **count = new CharCountBlock*[splitCount]();
-  for (size_t x = 0; x < splitCount; x++) {
-    count[x] = new CharCountBlock(splitSize, fitToCacheLine);
-  }
-
+  CharCountBlock *count =
+      new CharCountBlock(static_cast<size_t>(MAX_CHAR), fitToCacheLine);
   Semaphore taskDoneSem(-1 * splitCount * splitCount + 1);
   
   {
@@ -109,35 +98,21 @@ void doTest(size_t splitSize, size_t splitCount,
   taskDoneSem.down();
   
 #ifdef CHECK_CORRECTNESS
-  CharCountBlock **countS = new CharCountBlock*[splitCount]();
-  for (size_t x = 0; x < splitCount; x++) {
-    countS[x] = new CharCountBlock(splitSize, false);
-  }
+  CharCountBlock *countS =
+      new CharCountBlock(static_cast<size_t>(MAX_CHAR), fitToCacheLine);
 
   for (size_t x = 0; x < TEST_SIZE; x++) {
-    char current = randomChars[x];
-    size_t destination = current / splitSize;
-    size_t offset = current % splitSize;
-
-    countS[destination]->inc(offset, 1);
+    countS->inc(static_cast<size_t>(randomChars[x]), 1);
   }
 
-  if (checkEqual(countS, count, splitCount)) {
+  if (checkEqual(countS, count)) {
     cout << "Correctness test passed!" << endl;
   }
   
-  for (size_t x = 0; x < splitCount; x++) {
-    delete countS[x];
-  }
-
-  delete[] countS;
+  delete countS;
 #endif
   
-  for (size_t x = 0; x < splitCount; x++) {
-    delete count[x];
-  }
-
-  delete[] count;
+  delete count;
 }
 } // namespace
 

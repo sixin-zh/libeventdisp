@@ -19,18 +19,18 @@ namespace {
 static const size_t MASK_DIMENSION = 7;
 
 // Checks if the contents of the two matrices are equal
-bool checkEqual(const Matrix2D *mat1, const Matrix2D *mat2) {
+bool checkEqual(const Matrix2D &mat1, const Matrix2D &mat2) {
   bool ret = true;
 
-  if (mat1->width != mat2->width || mat1->height != mat2->height) {
+  if (mat1.width != mat2.width || mat1.height != mat2.height) {
     ret = false;
   }
   else {
-    for (size_t x = 0; x < mat1->width; x++) {
-      for (size_t y = 0; y < mat1->height; y++) {
-        if (mat1->get(x, y) != mat2->get(x, y)) {
+    for (size_t x = 0; x < mat1.width; x++) {
+      for (size_t y = 0; y < mat1.height; y++) {
+        if (mat1.get(x, y) != mat2.get(x, y)) {
           cerr << "Error at (" << x << ", " << y << "): "
-               << mat1->get(x, y) << " != " << mat2->get(x, y) << endl;
+               << mat1.get(x, y) << " != " << mat2.get(x, y) << endl;
           return false;
         }
       }
@@ -92,7 +92,7 @@ void conv(size_t inputHeight, size_t inputWidth, size_t maskDimension,
               Coord(rightMargin, inputHeight + topMargin),
               &singleThreadOutput);
 
-  if (checkEqual(&singleThreadOutput, &dispatcherOutput)) {
+  if (checkEqual(singleThreadOutput, dispatcherOutput)) {
     cout << "Success: Single thread output is equal to dispatcher output"
          << endl;
   }
