@@ -666,17 +666,16 @@ ErrHTTP svr_http_final(HPKG * &pk) {
   else if (fget == NULL) { // last GET, continue "reading"
     if (DBGL >= 5) { printf("[svr_http_final] fget\n"); fflush(stdout); }
     park->lcg = NULL;
+
     if (DBGL >= 5) { printf("[svr_http_final] keepalive\n"); fflush(stdout); }
-    //    if ( (cn->cpp)->nc <= MaxKeepAlive) {
+
     if (DBGL >= 4) { 
       printf("[svr_http_final] keepalive cn=%p, hpkg=%p, current pool size = %zu\n", cn, park, (cn->cpp)->nc);
       fflush(stdout); }
+
     bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, park), cn->cfd));  // TOTO: RReadTaskID
     if (DBGL >= 0) assert(bret == true);
-    // } else {
-    //   if (DBGL >= 2) { printf("[svr_http_final] max pooled, cn=%p, hpkg=%p\n", cn, park); fflush(stdout); }
-    //   svr_http_final(park);
-    // }
+
   }
   else { // continue fetching
     if (DBGL >= 5) { printf("[svr_http_final] fetch\n"); fflush(stdout); }
