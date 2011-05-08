@@ -6,8 +6,6 @@
 #include <cstring>
 #include <cerrno>
 
-#include <stdio.h>
-
 
 #define LIBEVENT_USE_SIG 1
 
@@ -44,6 +42,8 @@ struct AIOSigHandlerInfo {
 
 // Callback function for completion of asynchronous read/write.
 void aioDone(sigval_t signal) {
+
+
   AIOSigHandlerInfo* origInfo =
       reinterpret_cast<AIOSigHandlerInfo*>(signal.sival_ptr);
   aiocb *aioCB = origInfo->aioCB;
@@ -111,7 +111,6 @@ void checkIOProgress(aiocb *aioCB, IOCallback *callback) {
 int aioSkeletonFunction(int (*aio_func)(aiocb *), int fd, void *buff,
                         size_t len, off_t offset, IOCallback *callback) {
 
-  printf("[aioSkeletonFunction]\n"); fflush(stdout); 
 
   aiocb *aioCB = new aiocb();
 
@@ -180,13 +179,11 @@ IOCallback::~IOCallback() {
 
 int aio_read(int fd, void *buff, size_t len, off_t offset,
              IOCallback *callback) {
-  printf("[aio_read]\n"); fflush(stdout); 
   return aioSkeletonFunction(::aio_read, fd, buff, len, offset, callback);
 }
 
 int aio_write(int fd, void *buff, size_t len, off_t offset,
               IOCallback *callback) {
-  printf("[aio_write]\n"); fflush(stdout); 
   return aioSkeletonFunction(::aio_write, fd, buff, len, offset, callback);
 }
 }
