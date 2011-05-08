@@ -75,7 +75,7 @@ void conv(size_t inputHeight, size_t inputWidth, size_t maskDimension,
     Coord end(rightMargin, yPos);
 
     void (*convFunc)(const Matrix2D *, const Matrix2D *,
-                     const Coord &, const Coord &,
+                     const Coord, const Coord,
                      Matrix2D *, base::Semaphore *) = partialConv;
     
     Dispatcher::instance()->enqueue(

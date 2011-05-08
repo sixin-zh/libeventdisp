@@ -61,11 +61,11 @@ int applyMask(const Matrix2D *input, const Matrix2D *mask, const Coord &loc);
 // Performs a convolution operation specified by the given bounds
 // (start <= range < end)
 void partialConv(const Matrix2D *input, const Matrix2D *mask,
-                 const Coord &start, const Coord &end,
+                 const Coord start, const Coord end,
                  Matrix2D *output);
 
 void partialConv(const Matrix2D *input, const Matrix2D *mask,
-                 const Coord &start, const Coord &end,
+                 const Coord start, const Coord end,
                  Matrix2D *output, base::Semaphore *taskDoneSem);
 } //namespace
 

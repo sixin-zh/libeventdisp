@@ -46,7 +46,7 @@ int applyMask(const Matrix2D *input, const Matrix2D *mask, const Coord &loc) {
 }
 
 void partialConv(const Matrix2D *input, const Matrix2D *mask,
-                 const Coord &start, const Coord &end,
+                 const Coord start, const Coord end,
                  Matrix2D *output) {
   for (size_t y = start.y; y < end.y; y++) {
     for (size_t x = start.x; x < end.x; x++) {
@@ -56,7 +56,7 @@ void partialConv(const Matrix2D *input, const Matrix2D *mask,
 }
 
 void partialConv(const Matrix2D *input, const Matrix2D *mask,
-                 const Coord &start, const Coord &end,
+                 const Coord start, const Coord end,
                  Matrix2D *output, Semaphore *taskDoneSem) {
   partialConv(input, mask, start, end, output);
   taskDoneSem->up();
