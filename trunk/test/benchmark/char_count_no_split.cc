@@ -24,15 +24,14 @@ void reduce(CharCountBlock *count, size_t c) {
   count->inc(c, 1);
 }
 
-void map(char *randChars, CharCountBlock *count, size_t splitCount,
+void map(unsigned char *randChars, CharCountBlock *count, size_t splitCount,
          size_t splitSize, size_t start, size_t end, Semaphore *sem) {
   for (size_t x = start; x < end; x++) {
-    char current = randChars[x];
-    size_t destination = current / splitSize;
+    unsigned char current = randChars[x];
+    unsigned char destination = current / splitSize;
 
     Dispatcher::instance()->enqueue(
-        new UnitTask(bind(reduce, count, static_cast<size_t>(current)),
-                     destination));
+        new UnitTask(bind(reduce, count, current), destination));
   }
 
   for (size_t x = 0; x < splitCount; x++) {
@@ -63,21 +62,20 @@ void doTest(size_t splitSize, size_t splitCount,
             size_t generateCount, bool fitToCacheLine) {
   assert(splitCount <= 4);
   
-  const char MAX_CHAR = splitCount * splitSize;
+  const unsigned char MAX_CHAR = splitCount * splitSize;
   const size_t TEST_SIZE = splitCount * generateCount;
 
   // Initialize the pseudo-random array of characters. The initialization
   // code uses a very deterministic sequence since the character distribution
   // greatly impacts the queue size of each dispatcher (which in turn, would
   // affect the total run time)
-  char *randomChars = new char[TEST_SIZE]();
+  unsigned char *randomChars = new unsigned char[TEST_SIZE]();
   for (size_t x = 0; x < TEST_SIZE; x++) {
-    char nextChar = static_cast<char>(x % MAX_CHAR);
+    unsigned char nextChar = static_cast<char>(x % MAX_CHAR);
     randomChars[x] = nextChar;
   }
 
-  CharCountBlock *count =
-      new CharCountBlock(static_cast<size_t>(MAX_CHAR), fitToCacheLine);
+  CharCountBlock *count = new CharCountBlock(MAX_CHAR, fitToCacheLine);
   Semaphore taskDoneSem(-1 * splitCount * splitCount + 1);
   
   {
@@ -98,11 +96,10 @@ void doTest(size_t splitSize, size_t splitCount,
   taskDoneSem.down();
   
 #ifdef CHECK_CORRECTNESS
-  CharCountBlock *countS =
-      new CharCountBlock(static_cast<size_t>(MAX_CHAR), fitToCacheLine);
+  CharCountBlock *countS = new CharCountBlock(MAX_CHAR, fitToCacheLine);
 
   for (size_t x = 0; x < TEST_SIZE; x++) {
-    countS->inc(static_cast<size_t>(randomChars[x]), 1);
+    countS->inc(randomChars[x], 1);
   }
 
   if (checkEqual(countS, count)) {
