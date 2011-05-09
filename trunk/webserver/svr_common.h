@@ -12,7 +12,7 @@
 
 
 // server debug (verbal) level 0,1,2,3,4,...
-#define DBGL 4
+#define DBGL 0
 #include <assert.h>
 #include <errno.h>
 
@@ -26,13 +26,12 @@
 
 
 // Parameters
-#define MaxCSL  511   // max backlog: SOMAXCONN [socket dependent]
+#define MaxCSL  1024 // 511   // max backlog: SOMAXCONN [socket dependent]
 
-//#define MaxKeepAlive 150
 #define ReadTimeoutUSEC 0
-#define ReadTimeoutSEC 30
+#define ReadTimeoutSEC  5 // <- 30
 
-#define MaxACCEPT 600
+#define MaxACCEPT  4096 // 600
 #define ACSLEEPTIME_U 500000
 
 #define MAXCSIZE 65536 // cache size
@@ -40,11 +39,11 @@
 
 #define MAXKEYS 256    // cache key length
 
-#define MAXRH   8192
-#define MAXWH   8192
+#define MAXRH   8192    // read head size
+#define MAXWH   8192    // write head size
 #define MAXWHL  256     // max 32 lines for head
-#define MAXWB   1048576 // 1024K, TODO 65536  // hex: 10000
 
+#define MAXWB   1048576 // body block size 1024K
 
 
 #endif
