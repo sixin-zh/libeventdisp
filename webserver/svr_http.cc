@@ -154,23 +154,15 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
     }
   } // end parsing
 
-  
   if (fget != NULL) { // fetch the first GET
     bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, fget), CacheTaskID)); // [CacheTaskID] FETCH IN SERIAL !
     if (DBGL >= 0) assert(bret == true); // svr_http_final(fget);
   }
   else { // NO GET TASK !
     // continue "reading"
-    //    if ( (cn->cpp)->nc <= MaxKeepAlive ) {
     if (DBGL >= 4) printf("[svr_http_parse] keepalive, current pool size = %zu\n", (cn->cpp)->nc );
     bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, pk), cn->cfd));      // TOTO: RReadTaskID
-    if (DBGL >= 0) assert(bret == true); // { 
-	// if (DBGL >= 1) printf("[svr_http_parse] dispatcher error, hpkg=%p\n", pk); 
-	// return svr_http_final_aio(pk, cn->cfd, 0); }
-    // } else {
-    //   if (DBGL >= 2) printf("[svr_http_parse] max pooled, cn=%p, hpkg=%p\n", cn, pk); 
-    //   return svr_http_final_aio(pk, cn->cfd, 0);
-    // }
+    if (DBGL >= 0) assert(bret == true);
   }
 
   return EHTTP_OK;
