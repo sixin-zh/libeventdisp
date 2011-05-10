@@ -59,11 +59,11 @@ struct Conn {
     cpp = NULL; nc = 0;
     pthread_mutex_init(&lock, NULL);
     // debug information
+    snprintf(curr_name, MAXCLOC, "svr_conn_begin");
     gettimeofday(&curr_time, NULL);
     struct rusage ru; getrusage(RUSAGE_SELF, &ru);
     curr_utime = ru.ru_utime;
     curr_stime = ru.ru_stime;
-    snprintf(curr_name, MAXCLOC, "svr_conn_begint");
   }
 
   ~Conn() {
@@ -77,6 +77,7 @@ struct Conn {
       assert(cpp != NULL);
       pthread_mutex_lock(&(cpp->lock));
       print_times(curr_name, cname, curr_time, tim, curr_utime, ru.ru_utime, curr_stime, ru.ru_stime); 
+      fflush(stdout);
       pthread_mutex_unlock(&(cpp->lock));
     }
   }

@@ -46,7 +46,7 @@ struct HPKG {
 
   HttpSN   hsn;
   HttpST   hst;
-  HttpWST  wst; //  TransEnc enc;
+  HttpWST  wst;
 
   ssize_t         vern; // rep version (1 <- HTTP/1.1; 0 <- HTTP/1.0)
   struct charn    ver;  // req version
@@ -74,7 +74,7 @@ struct HPKG {
 
   HPKG(Conn * & cn) {
     cpn = cn;
-    hst = HS_UNKNOWN; // TODO: enc = TE_UNO;
+    hst = HS_UNKNOWN;
     vern = 1; hfd = -1; 
     tr_offset = 0; tr_nbytes = 0; 
     ppg = NULL; lcg = NULL; nsg = NULL;
