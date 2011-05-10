@@ -25,8 +25,9 @@
 #define ReadTimeoutUSEC 0
 #define ReadTimeoutSEC  5 // <- 30
 
-#define MaxACCEPT     4096
+#define MaxACCEPT      4096
 #define ACSLEEPTIME_U 50000
+#define LearningRATE   0.01
 
 #define MAXCSIZE 1048576  // 1M cache size
 #define MAXKEYS 256       // cache key length

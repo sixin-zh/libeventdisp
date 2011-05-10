@@ -57,8 +57,29 @@ struct Conn {
   struct timeval  curr_stime;
   
   Conn() {
+    Conn((Conn *) NULL);
+    /* pthread_mutex_init(&lock, NULL); */
+    /* cpp = NULL; nc = 0; */
+
+    /* // debug information */
+    /* snprintf(curr_name, MAXCLOC, "svr_conn_begin"); */
+    /* gettimeofday(&curr_time, NULL); */
+    /* gettimeofday(&tim_accept, NULL); */
+    /* struct rusage ru; getrusage(RUSAGE_SELF, &ru); */
+    /* curr_utime = ru.ru_utime; */
+    /* curr_stime = ru.ru_stime; */
+  }
+
+  Conn(Conn * cn) {
     pthread_mutex_init(&lock, NULL);
     cpp = NULL; nc = 0;
+
+    if (cn != NULL) { // parent
+      cpp = cn;
+      pthread_mutex_lock(&(cpp->lock));
+      ++cpp->nc;
+      pthread_mutex_unlock(&(cpp->lock));
+    }
 
     // debug information
     snprintf(curr_name, MAXCLOC, "svr_conn_begin");
@@ -69,24 +90,34 @@ struct Conn {
     curr_stime = ru.ru_stime;
   }
 
+
   ~Conn() {  
-    // debug
-    struct timeval tim; 
+
+    struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);
+    lifetime.tv_sec  = tim.tv_sec  - tim_accept.tv_sec;
+    lifetime.tv_usec = tim.tv_usec - tim_accept.tv_usec;
+
+    if (cpp != NULL) {
+      pthread_mutex_lock(&(cpp->lock));
+      --cpp->nc;
+      cpp->lifetime.tv_sec = cpp->lifetime.tv_sec + LearningRATE * (lifetime.tv_sec - cpp->lifetime.tv_sec);
+      cpp->lifetime.tv_usec = cpp->lifetime.tv_usec + LearningRATE * (lifetime.tv_usec - cpp->lifetime.tv_usec);
+      pthread_mutex_unlock(&(cpp->lock));
+    }
+
+    if (DBGL == -1) printf("%.9lf\n",convert_tim_sec(lifetime)); // pirnt out lifetime
+
+    // debug
     if (DBGL >= 1) {
-      struct rusage ru;
       char * cname =  (char *) "svr_conn_end";
-      getrusage(RUSAGE_SELF, &ru);
       assert(cpp != NULL);
       pthread_mutex_lock(&(cpp->lock));
       print_times((void *) this, curr_name, cname, curr_time, tim, curr_utime, ru.ru_utime, curr_stime, ru.ru_stime, (size_t) 0); 
       fflush(stdout);
       pthread_mutex_unlock(&(cpp->lock));
     }
-    // pirnt out lifetime
-    lifetime.tv_sec  = tim.tv_sec  - tim_accept.tv_sec;
-    lifetime.tv_usec = tim.tv_usec - tim_accept.tv_usec;
-    if (DBGL == -1) printf("%.9lf\n",convert_tim_sec(lifetime));
 
     pthread_mutex_destroy(&lock);
   }
