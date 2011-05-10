@@ -1,6 +1,6 @@
 CXX = g++
 CPPFLAGS += -g -Wall -Wextra -I../../lib/inc
-CXXFLAGS += -L../../build -lpthread -leventdisp -lrt -DCHECK_CORRECTNESS
+CXXFLAGS += -L../../build -lpthread -leventdisp -lrt #-DCHECK_CORRECTNESS
 
 TARGET = conv count count_ns
 

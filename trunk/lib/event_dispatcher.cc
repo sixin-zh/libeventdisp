@@ -53,7 +53,6 @@ bool EventDispatcher::enqueueTask(UnitTask *newTask) {
 }
 
 void EventDispatcher::stop(void) {
-
   ScopedLock sl(&stoppedMutex_);
   isStopped_ = true;
 }
@@ -119,7 +118,6 @@ void EventDispatcher::eventLoop(void) {
 }
 
 size_t EventDispatcher::pendingTasks(void) const {
-
   ScopedLock sl(&taskCountMutex_);
   
   size_t count = 0;
