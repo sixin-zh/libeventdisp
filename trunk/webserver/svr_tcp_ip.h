@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#define MAXCLOC 1024
+
 // Server Socket IP/PORT
 #define SVR_SA    sockaddr
 #define SVR_PORT  htons(8080)
@@ -37,27 +39,51 @@ enum ConnST {
   CS_CLOSED
 };
 
-
 // Conn can be understood as Session Layer in OSI model 
 struct Conn {
   ConnST            cst;   // state
   int               cfd;   // fd [socket]
   sockaddr_in       csa;   // socket address (TODO: cast to sockaddr)
-  //  POOL<Conn*>::L    csp;   // pool for child-connections
   Conn *            cpp;   // parent connection
 
   pthread_mutex_t   lock;  // connection lock
   size_t            nc;    // number of connections
 
+  // debug information
+  char            curr_name[MAXCLOC];
+  struct timeval  curr_time;
+  struct timeval  curr_utime;
+  struct timeval  curr_stime;
+  
   Conn() {
-    cpp = NULL; nc = 0; 
-    pthread_mutex_init(&lock, NULL); 
+    cpp = NULL; nc = 0;
+    pthread_mutex_init(&lock, NULL);
+    // debug information
+    gettimeofday(&curr_time, NULL);
+    struct rusage ru; getrusage(RUSAGE_SELF, &ru);
+    curr_utime = ru.ru_utime;
+    curr_stime = ru.ru_stime;
+    snprintf(curr_name, MAXCLOC, "svr_conn_begint");
   }
 
   ~Conn() {
     pthread_mutex_destroy(&lock);
+   
+    if (DBGL >= 1) {
+      char * cname =  (char *) "svr_conn_end";
+      struct timeval tim; struct rusage ru;
+      gettimeofday(&tim,NULL);
+      getrusage(RUSAGE_SELF, &ru);   
+      assert(cpp != NULL);
+      pthread_mutex_lock(&(cpp->lock));
+      print_times(curr_name, cname, curr_time, tim, curr_utime, ru.ru_utime, curr_stime, ru.ru_stime); 
+      pthread_mutex_unlock(&(cpp->lock));
+    }
   }
+
 };
+
+
 
 // Basis
 ErrConn svr_conn_listen (Conn * &);            // listen (socket, bind, listen)

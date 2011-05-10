@@ -8,12 +8,9 @@
 // TODO: use zero-copy socket for large request
 // TODO: set the O_NONBLOCK flag (for listen socket)
 
-
 // Keepalive (socket)
 int socketSetBlockingAndTimeout(int sockfd) {
-
   int ret;
-
   // set recv timeout
   timeval tv;
   tv.tv_usec = ReadTimeoutUSEC; tv.tv_sec = ReadTimeoutSEC;
@@ -79,12 +76,8 @@ ErrConn svr_conn_listen(Conn * &cn) {
 }
 
 
-// Accept new conn pn from server cn (listening)
-// #define ACSLEEPTIME_U 500000
+// Accept new conn pn from the listening server cn
 ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
-
-  if (DBGL >= 5) { printf("[svr_conn]"); fflush(stdout); }
-  if (DBGL >= 5) printf("[svr_conn]");
 
   pn = NULL; // peer connection
 
@@ -117,7 +110,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   pn->cpp = cn; // conn -> parent conn
 
   // ip track
-  if (DBGL >= 3) {
+  if (DBGL >= 2) {
     struct sockaddr_in cl_addr; socklen_t cl_addrlen;
     getpeername(connfd,  (SVR_SA *) &cl_addr, &cl_addrlen);
     printf("[svr_conn_accept] new socket accetped: svr=%p, peer=%p, cfd=%d, ip=%s:%d \n", cn, pn, connfd, inet_ntoa(cl_addr.sin_addr), ntohs(cl_addr.sin_port));
@@ -125,13 +118,12 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
 
   pthread_mutex_lock(&(cn->lock));
   ++cn->nc;
-  //  cn->csp.push_back(pn);                  // pooling
-  if (DBGL >= 2) {  printf("[svr_http_accept] new pool size %zu\n", cn->nc); }
+  if (DBGL >= 5) {  printf("[svr_http_accept] new pool size %zu\n", cn->nc); }
   pthread_mutex_unlock(&(cn->lock));
 
   HPKG * pk = new HPKG(pn);   // create HPKG (req)
 
-  if (DBGL >= 2) printf("[svr_conn_accept] svr=%p, peer=%p, hpkg=%p\n", cn, pk->cpn, pk);
+  if (DBGL >= 5) printf("[svr_conn_accept] svr=%p, peer=%p, hpkg=%p\n", cn, pk->cpn, pk);
 
   // read header
   if (svr_http_read(pk) == EHTTP_READ) return ERRCONN_AC;
@@ -165,41 +157,28 @@ ErrConn svr_conn_connect(Conn * &pn) {
   return ERRCONN_OK;
 }
 
-
-
-// if conn is not closed (by client or server), then close it and all sub-conns ..
+// Close the connection
 ErrConn svr_conn_close(Conn * &cn) {
 
-  if (DBGL >= 5) { printf("[svr_conn] close"); fflush(stdout); }
-
-  if (DBGL >= 3) printf("[svr_conn_close] close cn=%p\n", cn);
   if (DBGL >= 0) assert(cn != NULL);
-  
-  if (cn == NULL) return ERRCONN_CO; // ! this should never happen for websvrd
-  
-  // // close all sub connections of cn (if exist)
-  // POOL<Conn*>::L::iterator itr = cn->csp.begin();
-  // while (itr != cn->csp.end()) {
-  //   svr_conn_close(*itr++);
-  // }
 
-  // close itself (socket)
-  if (DBGL >= 5) printf("[svr_conn] close socket \n");
+  if (DBGL >= 4) printf("[svr_conn_close] close cn=%p\n", cn);
+
+  // close itself
   int connfd = cn->cfd;
   if (close(connfd) < 0) {
-    if (DBGL >= 1) { printf("[svr_conn_close] close sockek failed.\n");  fflush(stdout); }
+    if (DBGL >= 2) { printf("[svr_conn_close] close sockek failed.\n");  fflush(stdout); }
     return ERRCONN_CL;
   } else {
     cn->cst = CS_CLOSED;
-    if (DBGL >= 3) { printf("[svr_conn_close] socket closed = %d \n", connfd); fflush(stdout); }
+    if (DBGL >= 2) { printf("[svr_conn_close] socket closed = %d \n", connfd); fflush(stdout); }
   }
   Conn * pn = cn->cpp; // parent
   delete cn; cn = NULL;
 
   // remove from parent pool
-  if (DBGL >= 5) printf("[svr_conn] remove from pool \n");
-  if (DBGL >= 3) { printf("[svr_conn_close] removed from svr pool = %p\n", pn);  fflush(stdout); }
-  if ((&pn != NULL) && (pn != NULL)) {
+  if (DBGL >= 2) { printf("[svr_conn_close] removed from svr pool = %p\n", pn);  fflush(stdout); }
+  if (pn != NULL) {
     pthread_mutex_lock(&(pn->lock));
     --pn->nc;
     pthread_mutex_unlock(&(pn->lock));

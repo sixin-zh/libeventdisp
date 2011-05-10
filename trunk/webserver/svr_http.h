@@ -3,12 +3,6 @@
 
 #include <svr_tcp_ip.h>
 
-/* #define MAXRH   8192 */
-/* #define MAXWH   8192 */
-/* #define MAXWHL  256     // max 32 lines for head */
-/* #define MAXWB   1048576 // 65536  // hex: 10000 */
-/* #define MAXKEYS 256 */
-
 // state
 enum HttpSN {
   N_200,
@@ -30,13 +24,6 @@ enum HttpWST {
   WS_BODY,
   WS_UNO,
 };
-
-/* // transfer-encoding */
-/* enum TransEnc {  */
-/*   TE_IDE, // IDENTITY */
-/*   TE_CHU, // CHUNCKED */
-/*   TE_UNO, // UNKNOWN */
-/* }; */
 
 enum ErrHTTP {
   EHTTP_OK,    
@@ -83,11 +70,11 @@ struct HPKG {
   HPKG *  lcg;                  // last-child
   HPKG *  nsg;                  // next-slibling
 
-  HPKG() { cpn = NULL; hst = HS_UNKNOWN; vern = 1; hfd = -1; tr_offset = 0; ppg = NULL; lcg = NULL; nsg = NULL; } // enc = TE_UNO;
+  HPKG() { cpn = NULL; hst = HS_UNKNOWN; vern = 1; hfd = -1; tr_offset = 0; ppg = NULL; lcg = NULL; nsg = NULL; } // TODO: enc = TE_UNO;
 
   HPKG(Conn * & cn) {
     cpn = cn;
-    hst = HS_UNKNOWN; // enc = TE_UNO;
+    hst = HS_UNKNOWN; // TODO: enc = TE_UNO;
     vern = 1; hfd = -1; 
     tr_offset = 0; tr_nbytes = 0; 
     ppg = NULL; lcg = NULL; nsg = NULL;
@@ -96,7 +83,7 @@ struct HPKG {
   ~HPKG() {
     if (hfd != -1) close(hfd);
   }
-  
+
 };
 
 // call-forward
