@@ -62,7 +62,7 @@ class Conn {
   Conn(Conn * cn) {
     pthread_mutex_init(&lock, NULL);
     cpp = NULL; nc = 0;
-    lifetime.tv_sec = 0; lifetime.tv_usec = 0;
+    lifetime.tv_sec = DefaultLifeTIME; lifetime.tv_usec = 0;
 
     if (cn != NULL) { // parent
       cpp = cn;
@@ -95,7 +95,7 @@ class Conn {
       pthread_mutex_unlock(&(cpp->lock));
     }
 
-    if (DBGL == -1) printf("%.9lf\n", convert_tim_sec(lifetime)); // pirnt out the lifetime
+    if (DBGL == -1) { printf("%.9lf\n", convert_tim_sec(lifetime)); fflush(stdout); } // pirnt out the lifetime
 
     // debug
     if (DBGL >= 1) {

@@ -86,10 +86,10 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   // when accept limit exceeded
   while (MaxACCEPT < cn->nc) {
     if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %zu\n", cn->nc); // when accept limit exceeded
-    if (cn->lifetime.tv_sec > 1)  // polling
-      sleep(cn->lifetime.tv_sec);
+    if (cn->lifetime.tv_sec*(MaxACCEPT-MinACCEPT) > 1)  // polling
+      sleep(cn->lifetime.tv_sec*(MaxACCEPT-MinACCEPT));
     else 
-      usleep(cn->lifetime.tv_usec);
+      usleep(cn->lifetime.tv_usec*(MaxACCEPT-MinACCEPT));
   }
 
   // wait to accept (in an 'endless' loop)
@@ -113,7 +113,6 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   pn = new Conn(cn);
   pn->cfd = connfd;
   pn->cst = CS_CONNECTED;
-  //  pn->cpp = cn; // conn -> parent conn
 
   // ip track
   if (DBGL >= 2) {
