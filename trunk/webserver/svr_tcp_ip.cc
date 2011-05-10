@@ -86,7 +86,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   // when accept limit exceeded
   while (MaxACCEPT < cn->nc) {
     if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %zu\n", cn->nc); // when accept limit exceeded
-    if (cn->lifetime.tv_sec > 0)  // polling
+    if (cn->lifetime.tv_sec > 1)  // polling
       sleep(cn->lifetime.tv_sec);
     else 
       usleep(cn->lifetime.tv_usec);
@@ -96,7 +96,10 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   int connfd = accept(cn->cfd, (SVR_SA *) (SVR_SA *) NULL, NULL);
   if (connfd < 0) {
     if (DBGL >= 2) printf("[svr_conn_accept] accept fail, errorno: %d\n", errno); // when fd limit exceeded
-    usleep(ACSLEEPTIME_U); // polling
+    if (cn->lifetime.tv_sec > 1)  // polling
+      sleep(cn->lifetime.tv_sec);
+    else 
+      usleep(cn->lifetime.tv_usec);
     return ERRCONN_AC;
   }
   
@@ -119,11 +122,6 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
     printf("[svr_conn_accept] new socket accetped: svr=%p, peer=%p, cfd=%d, ip=%s:%d \n", cn, pn, connfd, inet_ntoa(cl_addr.sin_addr), ntohs(cl_addr.sin_port));
   }
 
-  // pthread_mutex_lock(&(cn->lock));
-  // ++cn->nc;
-  // if (DBGL >= 5) {  printf("[svr_http_accept] new pool size %zu\n", cn->nc); }
-  // pthread_mutex_unlock(&(cn->lock));
-
   HPKG * pk = new HPKG(pn);   // create HPKG (req)
 
   if (DBGL >= 5) printf("[svr_conn_accept] svr=%p, peer=%p, hpkg=%p\n", cn, pk->cpn, pk);
@@ -132,6 +130,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   if (svr_http_read(pk) == EHTTP_READ) return ERRCONN_AC;
 
   return ERRCONN_OK;
+
 }
 
 
@@ -158,6 +157,7 @@ ErrConn svr_conn_connect(Conn * &pn) {
   }
 
   return ERRCONN_OK;
+
 }
 
 // Close the connection
@@ -179,14 +179,7 @@ ErrConn svr_conn_close(Conn * &cn) {
   Conn * pn = cn->cpp; // parent
   delete cn; cn = NULL;
 
-  // // remove from parent pool
-  // if (DBGL >= 2) { printf("[svr_conn_close] removed from svr pool = %p\n", pn);  fflush(stdout); }
-  // if (pn != NULL) {
-  //   pthread_mutex_lock(&(pn->lock));
-  //   --pn->nc;
-  //   pthread_mutex_unlock(&(pn->lock));
-  // }
-
   if (DBGL >= 2) { printf("[svr_conn_close] conn removed ->  pool size = %zu\n", pn->nc);  fflush(stdout); }  
   return ERRCONN_OK;
+
 }
