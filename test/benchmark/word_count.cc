@@ -36,6 +36,7 @@ void map(size_t *randChars, CountBlock **count, size_t splitCount,
   }
 
   for (size_t x = 0; x < splitCount; x++) {
+    // Insert a sempahore up for synchronization
     Dispatcher::instance()->enqueue(new UnitTask(bind(checkpoint, sem), x));
   }
 }
@@ -68,14 +69,13 @@ bool checkEqual(CountBlock **count1, CountBlock **count2,
 
 void doTest(size_t splitSize, size_t splitCount, size_t generateCount) {
   const size_t MAX_WORD = splitCount * splitSize;
-  const size_t TEST_SIZE = splitCount * generateCount;
 
   // Initialize the pseudo-random array of characters. The initialization
   // code uses a very deterministic sequence since the character distribution
   // greatly impacts the queue size of each dispatcher (which in turn, would
   // affect the total run time)
-  size_t *randomWords = new size_t[TEST_SIZE]();
-  for (size_t x = 0; x < TEST_SIZE; x++) {
+  size_t *randomWords = new size_t[generateCount]();
+  for (size_t x = 0; x < generateCount; x++) {
     size_t nextChar = x % MAX_WORD;
     randomWords[x] = nextChar;
   }
@@ -110,7 +110,7 @@ void doTest(size_t splitSize, size_t splitCount, size_t generateCount) {
     countS[x] = new CountBlock(splitSize);
   }
 
-  for (size_t x = 0; x < TEST_SIZE; x++) {
+  for (size_t x = 0; x < generateCount; x++) {
     size_t current = randomWords[x];
     size_t destination = current / splitSize;
     size_t offset = current % splitSize;
