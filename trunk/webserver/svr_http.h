@@ -86,6 +86,29 @@ struct HPKG {
 
 };
 
+
+
+#include <dispatcher.h>
+#include <aio_wrapper.h>
+
+#define BIND std::tr1::bind
+
+using nyu_libeventdisp::Dispatcher;
+using nyu_libeventdisp::TaskGroupID;
+using nyu_libeventdisp::UnitTask;
+using nyu_libeventdisp::aio_read;
+using nyu_libeventdisp::aio_write;
+using nyu_libeventdisp::IOOkCallback;
+using nyu_libeventdisp::IOErrCallback;
+using nyu_libeventdisp::IOCallback;
+using namespace std::tr1::placeholders;
+
+#include "cache.h"
+using nyu_libedisp_webserver::Cache;
+using nyu_libedisp_webserver::CacheData;
+using nyu_libedisp_webserver::CacheCallback;
+
+
 // call-forward
 ErrHTTP svr_http_read  (HPKG * &);
 ErrHTTP svr_http_parse (HPKG * &);
@@ -93,11 +116,6 @@ ErrHTTP svr_http_fetch (HPKG * &);
 ErrHTTP svr_http_header(HPKG * &);
 ErrHTTP svr_http_body  (HPKG * &);
 ErrHTTP svr_http_final (HPKG * &);
-
-#include "cache.h"
-using nyu_libedisp_webserver::Cache;
-using nyu_libedisp_webserver::CacheData;
-using nyu_libedisp_webserver::CacheCallback;
 
 // call-back
 ErrHTTP svr_http_read_aio  (HPKG * &, int &, void *, const size_t &);

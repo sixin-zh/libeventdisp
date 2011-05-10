@@ -13,12 +13,13 @@
 
 // Server Debug (verbal) Level -1,0,1,2,3,4,...
 #define DBGL 1
+#define MAXCLOC 1024
 #include <assert.h>
 #include <errno.h>
 
 
 // Server Parameters
-#define NDISPATCHER 2
+#define NDISPATCHER 1
 
 #define MaxCSL  512   // SOMAXCONN
 
@@ -38,6 +39,8 @@
 
 #define MAXWB   65536 // 1048576 // body block size 1024K
 
+#define CacheTaskID 0  
+#define ReadTaskID  (NDISPATCHER>1)?(cn->cfd%(NDISPATCHER-1))+1:0
 
 #endif
 
@@ -45,7 +48,9 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-void print_times(char * src, char * dest, timeval &prev, timeval &curr, timeval &prev_u, timeval &curr_u, timeval &prev_s, timeval &curr_s);
+void print_times(const void * conn, const char * src, const char * dest, const timeval &prev, const timeval &curr, const timeval &prev_u, const timeval &curr_u, const timeval &prev_s, const timeval &curr_s, const size_t &qlen);
+
+void do_stat(const char * fpath);
 
 
 //#include <arpa/inet.h>
