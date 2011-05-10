@@ -17,6 +17,23 @@ int socketSetBlockingAndTimeout(int sockfd) {
   ret = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(struct timeval));
   if (ret < 0) return -1; //  printf("*****setsocket (fd=%d)  recv timeout ret = %d, errno = %d*****\n", sockfd, ret, errno);
 
+  // // get buffer size
+  // socklen_t optlen;
+
+  // int sendbuff;  optlen = sizeof(sendbuff);
+  // ret = getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &sendbuff, &optlen);
+  // if (ret < 0) return -1;
+  // else printf("send buffer size = %d\n", sendbuff);
+
+  // int readbuff;  optlen = sizeof(sendbuff);
+  // ret = getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &readbuff, &optlen);
+  // if (ret < 0) return -1;
+  // else printf("recv buffer size = %d\n", readbuff);
+   
+  //SO_SNDBUF      set buffer size for output 
+  //SO_RCVBUF      set buffer size for input 
+  //SO_SNDLOWAT    set minimum count for output 
+
   return 0;
 }
 
