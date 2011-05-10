@@ -37,6 +37,11 @@ class EventDispatcherInterface {
   // Resumes this dispatcher from a stopped state. Does nothing if the
   // dispatcher is not stopped.
   virtual void resume(void) = 0;
+
+  // For debugging only
+  // Returns the size of the task queue of the dispatcher of where id belongs to.
+  // Note that it can contain or not contain id and other ids.
+  virtual size_t getSize(TaskGroupID id) const = 0;
 };
 }
 

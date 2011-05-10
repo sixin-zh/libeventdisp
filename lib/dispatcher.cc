@@ -29,5 +29,9 @@ bool Dispatcher::enqueue(UnitTask *newTask) {
   return eventDispatcher_->enqueueTask(newTask);
 }
 
+size_t Dispatcher::getSize(TaskGroupID id) const {
+  return eventDispatcher_->getSize(id);
+}
+
 }
 
