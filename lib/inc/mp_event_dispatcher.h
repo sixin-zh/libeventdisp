@@ -53,15 +53,21 @@ class MPEventDispatcher : public EventDispatcherInterface {
   typedef std::tr1::unordered_map<TaskGroupID, size_t> TaskIDTable;
   // Assumption: the EventDispatcherInterface implementations are thread safe
   std::vector<EventDispatcher*> dispatchers_;
+  const size_t concurrentTaskCount_;
+
+  
+#ifdef USE_HASHING
+  static std::tr1::hash<int> hasher_;
+#else
   // protected by taskTableMutex_
   TaskIDTable taskIDTable_;
 
   base::Mutex taskTableMutex_;
   base::Mutex tokenMutex_;
 
-  const size_t concurrentTaskCount_;
   // protected by tokenMutex_
   size_t roundRobinToken_;
+#endif
   
   DISALLOW_COPY_AND_ASSIGN(MPEventDispatcher);
 };

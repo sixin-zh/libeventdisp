@@ -12,7 +12,11 @@ using std::pair;
 using base::ScopedLock;
 
 MPEventDispatcher::MPEventDispatcher(size_t concurrentTaskCount)
+#ifdef USE_HASHING
+    : concurrentTaskCount_(concurrentTaskCount) {
+#else
     : concurrentTaskCount_(concurrentTaskCount), roundRobinToken_(0) {
+#endif
   for (size_t x = 0; x < concurrentTaskCount; x++) {
     dispatchers_.push_back(new EventDispatcher());
   }
@@ -24,9 +28,11 @@ MPEventDispatcher::~MPEventDispatcher() {
 }
 
 bool MPEventDispatcher::enqueueTask(UnitTask *newTask) {
-
   size_t taskDestination;
-  
+
+#ifdef USE_HASHING
+  taskDestination = hasher_(newTask->id);
+#else
   {
     ScopedLock scopedToken(&tokenMutex_);
     ScopedLock scopedTable(&taskTableMutex_);
@@ -45,6 +51,7 @@ bool MPEventDispatcher::enqueueTask(UnitTask *newTask) {
       }
     }
   }
+#endif
 
   dispatchers_[taskDestination]->enqueueTask(newTask);
   
@@ -58,7 +65,6 @@ void MPEventDispatcher::resume(void) {
 }
 
 bool MPEventDispatcher::busy(void) {
-
   for (std::vector<EventDispatcher*>::iterator iter = dispatchers_.begin();
        iter != dispatchers_.end(); ++iter) {
     if ((*iter)->busy()) {
