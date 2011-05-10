@@ -26,8 +26,8 @@
 #define ReadTimeoutSEC  5 // <- 30
 
 #define MaxACCEPT      4096 // hard limit
+#define DefaultLifeTIME  10 // sec
 //#define MinACCEPT      3048 // soft limit
-#define DefaultLifeTIME   1 // 1 sec
 //#define LearningRATE   0.1
 
 #define MAXCSIZE 1048576  // 1M cache size

@@ -2,7 +2,6 @@
 #define ED_SVR_CONN_H_
 
 #include <svr_common.h>
-#define MAXCLOC 1024
 
 #include <pthread.h>
 #include <sys/socket.h>
@@ -37,7 +36,8 @@ enum ConnST {
   CS_CLOSED
 };
 
-// Conn can be understood as Session Layer in OSI model 
+#define MAXCLOC 1024
+// Conn is regarded as Session Layer in OSI model 
 class Conn {
 
  public:
@@ -56,23 +56,33 @@ class Conn {
   struct timeval  curr_utime;
   struct timeval  curr_stime;
 
-  struct timeval  lifetime;   // for accept polling
-  struct timeval  acceptime;  // to estimate the lifetime
-  size_t          curr_nc;    // current # of conns
+  struct timeval  life_time;   
+  struct timeval  life_utime;
+  struct timeval  life_stime;
+  /* struct timeval  acceptime; */
+  /* struct timeval  acceptimeu; */
+  /* struct timeval  acceptimes; */
+  size_t          curr_nc;    // current # of conns (including itself)
 
   Conn(Conn * cn) {
     pthread_mutex_init(&lock, NULL);
-    cpp = NULL; nc = 0; curr_nc = 0;
-    lifetime.tv_sec = DefaultLifeTIME; lifetime.tv_usec = 0;
+    cpp = NULL; nc = 0;
 
     if (cn != NULL) { // parent
       cpp = cn;
       pthread_mutex_lock(&(cpp->lock));
-      curr_nc = cpp->nc++;
+      ++cpp->nc;
       pthread_mutex_unlock(&(cpp->lock));
     }
 
-    if (DBGL == -1) gettimeofday(&acceptime, NULL);
+    if (DBGL == -1) {
+      gettimeofday(&life_time, NULL);
+      struct rusage ru; getrusage(RUSAGE_SELF, &ru);
+      life_utime = ru.ru_utime;
+      life_stime = ru.ru_stime;
+      if (cpp != NULL) curr_nc = cpp->nc;
+    }
+
     // debug information
     if (DBGL >= 1) {
       snprintf(curr_name, MAXCLOC, "svr_conn_begin");
@@ -85,6 +95,7 @@ class Conn {
 
   ~Conn() {  
 
+    // debug
     if (DBGL >= 1) {
       char * cname =  (char *) "svr_conn_end";
       struct timeval tim; struct rusage ru;
@@ -97,41 +108,38 @@ class Conn {
       pthread_mutex_unlock(&(cpp->lock));
     }
 
+    if (DBGL == -1) { 
+      struct timeval tim; struct rusage ru;
+      gettimeofday(&tim,NULL);
+      getrusage(RUSAGE_SELF, &ru);
+      life_time.tv_sec  = tim.tv_sec  - life_time.tv_sec;
+      life_time.tv_usec = tim.tv_usec - life_time.tv_usec;
+      life_utime.tv_sec = ru.ru_utime.tv_sec -  life_utime.tv_sec;
+      life_utime.tv_usec = ru.ru_utime.tv_usec - life_utime.tv_usec;
+      life_stime.tv_sec = ru.ru_stime.tv_sec -  life_stime.tv_sec;
+      life_stime.tv_usec = ru.ru_stime.tv_usec - life_stime.tv_usec;
+      assert(cpp != NULL);
+      pthread_mutex_lock(&(cpp->lock));
+      printf("%zu->%zu: %.9lf, %.9lf, %.9lf\n", curr_nc, cpp->nc, convert_tim_sec(life_time), convert_tim_sec(life_utime), convert_tim_sec(life_stime)); 
+      fflush(stdout);
+      pthread_mutex_unlock(&(cpp->lock));
+    }
+
     if (cpp != NULL) {
       pthread_mutex_lock(&(cpp->lock));
       --cpp->nc;
       pthread_mutex_unlock(&(cpp->lock));
     }
-
-    // debug
-    if (DBGL == -1) { 
-      struct timeval tim;
-      gettimeofday(&tim,NULL);
-      lifetime.tv_sec  = tim.tv_sec  - acceptime.tv_sec;
-      lifetime.tv_usec = tim.tv_usec - acceptime.tv_usec;
-      printf("%zu, %.9lf\n", curr_nc, convert_tim_sec(lifetime)); fflush(stdout);
-    } // pirnt out the lifetime
-    
     pthread_mutex_destroy(&lock);
+
   }
 
 };
-
-
 
 // Basis
 ErrConn svr_conn_listen (Conn * &);            // listen (socket, bind, listen)
 ErrConn svr_conn_accept (Conn * &, Conn * &);  // accept new connection from client
 ErrConn svr_conn_connect(Conn * &);            // connect to another server
 ErrConn svr_conn_close  (Conn * &);            // close connection
-
-/* // TODO: KeepAlive */
-/* #define MaxCSL  512   // max backlog: SOMAXCONN [socket dependent] */
-/* #define MaxKeepAlive 150 */
-/* #define ReadTimeoutUSEC 0 */
-/* #define ReadTimeoutSEC 30 */
-/* #define MaxACCEPT 500 */
-
-// Notice: MaxKeepAlive,MaxCSL <= Max#FD
 
 #endif
