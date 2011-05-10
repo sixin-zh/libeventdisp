@@ -9,41 +9,42 @@ Conn * svrC; // server conn
 // Start the server
 void svr_start() {
 
-  svrC = new Conn;
+  svrC = new Conn(NULL);
   Conn * peerC = NULL;   
 
   // listen
   if ( (svr_conn_listen(svrC) < 0) ) {
     if (DBGL >= 2) printf("[srv_start] server listen failed.\n");
-    svr_stop(); return;
+    svr_stop(); 
+    return;
   }
 
+  if (DBGL >= 4) printf("svrC=%p\n", svrC);
   // loop
   while (svrC!=NULL) {
     svr_conn_accept(svrC,peerC); /* assume no concurrent accept */
   }
 
-  svr_stop();
 } 
 
 
 
 // Stop the server
 void svr_stop() {
-  svr_conn_close(svrC); // TODO: del all the tasks in Dispatcher
+  if (svrC != NULL) svr_conn_close(svrC); // TODO: del all the tasks in Dispatcher
 }
 
 /* Entrance */
 int main(int argc, char* argv[]) {
 
-  if ((argc > 2) && (strncmp(argv[1], "stat", 4) == 0)) {
-    do_stat(argv[2]);
-  }
-  else {
-    Dispatcher::init(NDISPATCHER,true);
-    svrC = NULL; 
-    svr_start(); 
-  }
+  // if ((argc > 2) && (strncmp(argv[1], "stat", 4) == 0)) {
+  //   do_stat(argv[2]);
+  // }
+  // else {
+  Dispatcher::init(NDISPATCHER,true);
+  svrC = NULL; 
+  svr_start(); 
+  // }
 
   return 0;
 }

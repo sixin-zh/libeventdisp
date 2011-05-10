@@ -42,8 +42,9 @@ struct charn {
 };
 
 // Http Package
-struct HPKG {
+class HPKG {
 
+ public:
   HttpSN   hsn;
   HttpST   hst;
   HttpWST  wst;
