@@ -4,28 +4,11 @@
 #include <svr_http.h>
 #include <svr_tcp_ip.h>
 
-#include <dispatcher.h>
-#include <aio_wrapper.h>
-
-#define BIND std::tr1::bind
-
-using nyu_libeventdisp::Dispatcher;
-using nyu_libeventdisp::UnitTask;
-using nyu_libeventdisp::aio_read;
-using nyu_libeventdisp::aio_write;
-using nyu_libeventdisp::IOOkCallback;
-using nyu_libeventdisp::IOErrCallback;
-using nyu_libeventdisp::IOCallback;
-using namespace std::tr1::placeholders;
-
-#define CacheTaskID 0  
-#define ReadTaskID  (NDISPATCHER>1)?(cn->cfd%(NDISPATCHER-1))+1:0
-
 static Cache _cache(MAXCSIZE);
 
 // Reply
 #define CRLF "\r\n"
-static const char * _websvrd      =  "Websvrd/1.1";
+static const char * _websvrd      =  "websvrd/1.1";
 static const char * _sline_200[2] = {"HTTP/1.0 200 OK"         , "HTTP/1.1 200 OK"};          //
 static const char * _sline_400[2] = {"HTTP/1.0 400 Bad Request", "HTTP/1.1 400 Bad Request"}; //
 static const char * _sline_404[2] = {"HTTP/1.0 404 Not Found"  , "HTTP/1.1 404 Not Found"};   //
@@ -44,7 +27,8 @@ ErrHTTP svr_http_read(HPKG * &pk) {
     getrusage(RUSAGE_SELF, &ru);
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) ReadTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -55,9 +39,7 @@ ErrHTTP svr_http_read(HPKG * &pk) {
 
   if (DBGL >= 4) printf("[svr_http_read] hpkg=%p, cn=%p\n",pk, cn);
 
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_R)) {
-    if (DBGL >= 2) printf("[svr_http_read] conn error, hpkg=%p, cn=%p\n",pk, cn);    
-    return svr_http_final(pk); }
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_R)) return svr_http_final(pk);
 
   pk->hst = HS_READING;
 
@@ -96,7 +78,8 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) ReadTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -199,7 +182,8 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
     getrusage(RUSAGE_SELF, &ru);
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) ReadTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -241,7 +225,8 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
     getrusage(RUSAGE_SELF, &ru);
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -345,7 +330,8 @@ ErrHTTP svr_http_header_to_body_aio(HPKG * &pk, int &fd, void * buf, const size_
     getrusage(RUSAGE_SELF, &ru);
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -382,7 +368,8 @@ ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -434,7 +421,8 @@ ErrHTTP svr_http_header(HPKG * &pk) {
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen);
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -453,7 +441,7 @@ ErrHTTP svr_http_header(HPKG * &pk) {
   CacheCallback * cCB = new CacheCallback(BIND(svr_http_header_wio, pk, _1));
 
   if (pk->headkey.p == NULL) { pk->headkey.p = (char *) malloc(MAXKEYS); pk->headkey.cached = false; pk->headkey.p[MAXKEYS-1] = '\0'; }
-  strncpy(pk->headkey.p, pk->uri.p, MAXKEYS-1); 
+  strncpy(pk->headkey.p, pk->uri.p, MAXKEYS-1);
   pk->headkey.n = strlen(pk->headkey.p);
   if (!_cache.get(pk->headkey.p, cCB)) {
     bool rsvp = _cache.reserve(pk->headkey.p);
@@ -468,7 +456,7 @@ ErrHTTP svr_http_header(HPKG * &pk) {
 }
 
 
-// 400 ERROR ? [CacheTaskID]
+// 400 ERROR [CacheTaskID->CacheTaskID]
 ErrHTTP svr_http_write_400(HPKG * &pk) {
 
   if (DBGL >= 0) assert(pk != NULL);
@@ -482,7 +470,8 @@ ErrHTTP svr_http_write_400(HPKG * &pk) {
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen);
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -501,7 +490,7 @@ ErrHTTP svr_http_write_400(HPKG * &pk) {
 
   IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_body_rio, pk, _1, _2, _3));
   IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
-  IOCallback    * ioCB  = new IOCallback(okCB, errCB); // ? [CacheTaskID]
+  IOCallback    * ioCB  = new IOCallback(okCB, errCB,CacheTaskID); // ?
 
   size_t _ss = strlen(_sline_400[1])+2*strlen(CRLF)+1;
   pk->chead.p = (char*) malloc(_ss);
@@ -513,7 +502,7 @@ ErrHTTP svr_http_write_400(HPKG * &pk) {
 }
 
 
-// FETCH URI [CacheTaskID]
+// FETCH URI [CacheTaskID->CacheTaskID]
 ErrHTTP svr_http_fetch(HPKG * &pk) { 
 
   if (DBGL >= 0) assert(pk != NULL);
@@ -527,7 +516,8 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen);
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -561,7 +551,7 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
 }
 
 
-// GOT, TODO: parallel this callback by cache
+// GOT [CacheTaskID->CacheTaskID]
 ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
 
   if (DBGL >= 0) assert(pk != NULL);
@@ -575,7 +565,8 @@ ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen);
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -610,7 +601,7 @@ ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
 }
 
 
-// WRITTEN [CacheTaskID]
+// WRITTEN [CacheTaskID->CacheTaskID]
 ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
   if (DBGL >= 0) assert(pk != NULL);
@@ -624,7 +615,8 @@ ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen);
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -652,7 +644,7 @@ ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
   return EHTTP_OK;
 }
 
-// PUT [CacheTaskID]
+// PUT [CacheTaskID->CacheTaskID]
 ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
   if (DBGL >= 0) assert(pk != NULL);
@@ -666,7 +658,8 @@ ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
     getrusage(RUSAGE_SELF, &ru);   
         assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen);
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -685,7 +678,7 @@ ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
 }
 
 
-// FETCH BODY [CacheTaskID]
+// FETCH BODY [CacheTaskID->CacheTaskID]
 ErrHTTP svr_http_body(HPKG * &pk) {
   
   if (DBGL >= 0) assert(pk != NULL);
@@ -699,7 +692,8 @@ ErrHTTP svr_http_body(HPKG * &pk) {
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen);
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -743,7 +737,7 @@ ErrHTTP svr_http_body(HPKG * &pk) {
 }
 
 
-// [CacheTaskID]
+// [CacheTaskID->CacheTaskID]
 ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
 
   if (DBGL >= 0) assert(pk != NULL);
@@ -757,7 +751,8 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen);
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -812,7 +807,7 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
   return svr_http_final(pk);
 }
 
-// TODO: cfd
+// [CacheTaskID->?]
 ErrHTTP svr_http_final(HPKG * &pk) {
 
   if (DBGL >= 0) assert(pk != NULL);
@@ -826,7 +821,8 @@ ErrHTTP svr_http_final(HPKG * &pk) {
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) CacheTaskID);
+    print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen);
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -845,7 +841,7 @@ ErrHTTP svr_http_final(HPKG * &pk) {
   if (park == NULL) { // EOF, close connection
     // bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_conn_close, cn), (ndisp_nocache>0)?(cn->cfd%ndisp_nocache)+1:RReadTaskID ));
     // if (DBGL >= 0) assert(bret == true);
-    svr_conn_close(cn);
+    svr_conn_close(cn); // CacheTaskID
   }
   else if (fget == NULL) { // last GET, continue "reading"
     park->lcg = NULL;

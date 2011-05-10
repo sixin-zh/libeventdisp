@@ -4,12 +4,10 @@
 #include <svr_common.h>
 
 #include <pthread.h>
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define MAXCLOC 1024
 
 // Server Socket IP/PORT
 #define SVR_SA    sockaddr
@@ -76,7 +74,7 @@ struct Conn {
       getrusage(RUSAGE_SELF, &ru);   
       assert(cpp != NULL);
       pthread_mutex_lock(&(cpp->lock));
-      print_times(curr_name, cname, curr_time, tim, curr_utime, ru.ru_utime, curr_stime, ru.ru_stime); 
+      print_times((void *) this, curr_name, cname, curr_time, tim, curr_utime, ru.ru_utime, curr_stime, ru.ru_stime, (size_t) 0); 
       fflush(stdout);
       pthread_mutex_unlock(&(cpp->lock));
     }

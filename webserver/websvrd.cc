@@ -29,18 +29,21 @@ void svr_start() {
 
 
 // Stop the server
-// TODO: del all the tasks in Dispatcher
 void svr_stop() {
-  svr_conn_close(svrC);
+  svr_conn_close(svrC); // TODO: del all the tasks in Dispatcher
 }
 
 /* Entrance */
-int main(int argc, char **argv) {
+int main(int argc, char* argv[]) {
 
-  Dispatcher::init(NDISPATCHER,true);
-
-  svrC = NULL; 
-  svr_start(); 
+  if ((argc > 2) && (strncmp(argv[1], "stat", 4) == 0)) {
+    do_stat(argv[2]);
+  }
+  else {
+    Dispatcher::init(NDISPATCHER,true);
+    svrC = NULL; 
+    svr_start(); 
+  }
 
   return 0;
 }
