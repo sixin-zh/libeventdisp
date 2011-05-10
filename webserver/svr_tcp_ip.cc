@@ -85,21 +85,21 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
 
   // when accept limit exceeded
   while (MaxACCEPT < cn->nc) {
-    if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %zu\n", cn->nc); // when fd limit exceeded
-    usleep(ACSLEEPTIME_U);
+    if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %zu\n", cn->nc); // when accept limit exceeded
+    usleep(ACSLEEPTIME_U); // polling
   }
 
   // wait to accept (in an 'endless' loop)
   int connfd = accept(cn->cfd, (SVR_SA *) (SVR_SA *) NULL, NULL);
   if (connfd < 0) {
     if (DBGL >= 2) printf("[svr_conn_accept] accept fail, errorno: %d\n", errno); // when fd limit exceeded
-    usleep(ACSLEEPTIME_U); // TODO
+    usleep(ACSLEEPTIME_U); // polling
     return ERRCONN_AC;
   }
   
   // keepalive: set BLOCKING and I/O TIMEOUT
   if (socketSetBlockingAndTimeout(connfd) < 0) {
-    if (DBGL >= 2) printf("[svr_conn_accept] fail to set nonblicking and timeout\n"); // when fd or accept limit exceeded
+    if (DBGL >= 0) printf("[svr_conn_accept] fail to set nonblicking and timeout\n");
     return ERRCONN_AC;
   }
 
