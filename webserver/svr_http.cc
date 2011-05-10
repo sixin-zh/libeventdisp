@@ -23,9 +23,9 @@ using namespace std::tr1::placeholders;
 
 static Cache _cache(MAXCSIZE);
 
-// Reply Header
+// Reply
 #define CRLF "\r\n"
-static const char * _websvrd      = "websvrd/g";
+static const char * _websvrd      =  "Websvrd/1.1";
 static const char * _sline_200[2] = {"HTTP/1.0 200 OK"         , "HTTP/1.1 200 OK"};          //
 static const char * _sline_400[2] = {"HTTP/1.0 400 Bad Request", "HTTP/1.1 400 Bad Request"}; //
 static const char * _sline_404[2] = {"HTTP/1.0 404 Not Found"  , "HTTP/1.1 404 Not Found"};   //
@@ -842,31 +842,18 @@ ErrHTTP svr_http_final(HPKG * &pk) {
 
   delete pk;
 
-  if (DBGL >= 5) { printf("[svr_http_final] pk deleted \n"); fflush(stdout); }
-
   if (park == NULL) { // EOF, close connection
-    if (DBGL >= 5) { printf("[svr_http_final] park \n"); fflush(stdout); }
     // bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_conn_close, cn), (ndisp_nocache>0)?(cn->cfd%ndisp_nocache)+1:RReadTaskID ));
     // if (DBGL >= 0) assert(bret == true);
     svr_conn_close(cn);
-    if (DBGL >= 5) { printf("[svr_http_final] conn closed\n"); fflush(stdout); }
   }
   else if (fget == NULL) { // last GET, continue "reading"
-    if (DBGL >= 5) { printf("[svr_http_final] fget\n"); fflush(stdout); }
     park->lcg = NULL;
-
-    if (DBGL >= 5) { printf("[svr_http_final] keepalive\n"); fflush(stdout); }
-
-    if (DBGL >= 5) { 
-      printf("[svr_http_final] keepalive cn=%p, hpkg=%p, current pool size = %zu\n", cn, park, (cn->cpp)->nc);
-      fflush(stdout); }
-
+    if (DBGL >= 5) printf("[svr_http_final] keepalive cn=%p, hpkg=%p, current pool size = %zu\n", cn, park, (cn->cpp)->nc);
     bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, park), ReadTaskID));
     if (DBGL >= 0) assert(bret == true);
-
   }
   else { // continue fetching
-    if (DBGL >= 5) { printf("[svr_http_final] fetch\n"); fflush(stdout); }
     bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_fetch, fget), CacheTaskID)); // [CacheTaskID] IN SERIAL !
     if (bret == false) svr_http_final(fget);
   }
