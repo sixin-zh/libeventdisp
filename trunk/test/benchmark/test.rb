@@ -48,8 +48,7 @@ module LibeventdispBenchmark
       [10, 1000],
       [100, 1000],
       [1000, 100],
-      [1000, 1000],
-      [100, 10000],
+      [100, 100]
     ]
 
     test_pattern.each do |arg|
@@ -59,6 +58,8 @@ module LibeventdispBenchmark
 #        puts "#{TIME_CMD} #{CONV_CMD} #{idx + 1} #{load * arg[0]} #{arg[1]}"
         `#{TIME_CMD} #{CONV_CMD} #{idx + 1} #{load * arg[0]} #{arg[1]}`
       end
+
+      puts
     end
   end
 
@@ -76,6 +77,8 @@ module LibeventdispBenchmark
 #        puts "#{TIME_CMD} #{CHAR_COUNT_CMD} #{idx + 1} #{load} #{arg}"
         `#{TIME_CMD} #{CHAR_COUNT_CMD} #{idx + 1} #{load} #{arg}`
       end
+
+      puts
     end
   end
 end
