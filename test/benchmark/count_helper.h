@@ -6,19 +6,16 @@
 
 namespace nyu_libeventdisp_helper {
 // A simple container for holding counters
-class CharCountBlock {
+class CountBlock {
  public:
-  static const size_t CACHE_LINE;
   const size_t size; // number of counter slots, excluding the padding
 
   // Class constructor.
   //
   // Params:
-  //  uniqueChars - the number of unique chars to create a counter for.
-  //  fitToCacheLine - whether to pad the data structure in order to fit the
-  //    cache line. Requirement: size should be able to fit in cache line
-  CharCountBlock(size_t uniqueChars, bool fitToCacheLine);
-  ~CharCountBlock();
+  //  size - the size of the block
+  explicit CountBlock(size_t size);
+  ~CountBlock();
   
   inline uint32_t get(size_t idx) {
     return count_[idx];

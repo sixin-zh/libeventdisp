@@ -2,7 +2,7 @@ CXX = g++
 CPPFLAGS += -g -Wall -Wextra -I../../lib/inc
 CXXFLAGS += -L../../build -lpthread -leventdisp -lrt #-DCHECK_CORRECTNESS
 
-TARGET = conv count count_ns
+TARGET = conv count
 
 all: $(TARGET)
 
@@ -12,10 +12,7 @@ all: $(TARGET)
 conv: conv.cc conv_helper.o
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^
 
-count: char_count.cc char_count_helper.o
-	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^
-
-count_ns: char_count_no_split.cc char_count_helper.o
+count: word_count.cc count_helper.o
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^
 
 .phony: clean perf
