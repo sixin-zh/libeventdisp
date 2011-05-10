@@ -61,6 +61,11 @@ class Dispatcher {
   // Returns true if successful
   bool enqueue(UnitTask *newTask);
 
+  // For debugging only
+  // Returns the size of the task queue of the dispatcher of where id belongs to.
+  // Note that it can contain or not contain id and other ids.
+  size_t getSize(TaskGroupID id) const;
+
  private:
   static Dispatcher *instance_;
   EventDispatcherInterface *eventDispatcher_;

@@ -60,6 +60,11 @@ class EventDispatcher : public EventDispatcherInterface {
   // Mutex usage: taskCountMutex_
   size_t pendingTasks(void) const;
 
+  // For debugging only
+  // Returns the size of the task queue of the dispatcher of where id belongs to.
+  // Note that it can contain or not contain id and other ids.
+  size_t getSize(TaskGroupID id) const;
+  
  private:
   typedef std::tr1::unordered_map<TaskGroupID, size_t> TaskCountMap;
   base::Mutex queueMutex_;

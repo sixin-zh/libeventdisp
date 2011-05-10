@@ -128,5 +128,10 @@ size_t EventDispatcher::pendingTasks(void) const {
   
   return count;
 }
+
+size_t EventDispatcher::getSize(TaskGroupID id) const {
+  return pendingTasks();
+}
+
 }
 
