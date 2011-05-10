@@ -89,7 +89,8 @@ void doTest(size_t splitSize, size_t splitCount, size_t generateCount) {
   
   {
     size_t start = 0;
-    size_t end = generateCount;
+    size_t wordsPerSplit = generateCount / splitCount;
+    size_t end = wordsPerSplit;
 
     for (size_t partition = 0; partition < splitCount; partition++) {
       Dispatcher::instance()->enqueue(
@@ -97,7 +98,7 @@ void doTest(size_t splitSize, size_t splitCount, size_t generateCount) {
                             start, end, &taskDoneSem), partition));
       
       start = end;
-      end += generateCount;
+      end += wordsPerSplit;
     }
   }
 

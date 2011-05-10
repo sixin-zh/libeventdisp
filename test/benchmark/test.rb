@@ -67,15 +67,16 @@ module LibeventdispBenchmark
     thread_load = get_thread_load(thread_count)
 
     test_pattern = [
-      10000, 100000, 1000000, 10000000, 100000000
+      10, 100, 1000, 10000, 100000
     ]
 
     test_pattern.each do |arg|
-      puts "char count: #{thread_load[0]} #{arg}"
+      words = arg * thread_load[0]
+      puts "char count: #{thread_load[0]} #{words}"
 
       thread_load.each_with_index do |load, idx|
-#        puts "#{TIME_CMD} #{CHAR_COUNT_CMD} #{idx + 1} #{load} #{arg}"
-        `#{TIME_CMD} #{CHAR_COUNT_CMD} #{idx + 1} #{load} #{arg}`
+#        puts "#{TIME_CMD} #{CHAR_COUNT_CMD} #{idx + 1} #{load} #{words}"
+        `#{TIME_CMD} #{CHAR_COUNT_CMD} #{idx + 1} #{load} #{words}`
       end
 
       puts
