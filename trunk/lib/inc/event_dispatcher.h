@@ -57,8 +57,6 @@ class EventDispatcher : public EventDispatcherInterface {
 
   // Returns the number of task in the queue.
   //
-  // Warning: This takes O(Number of different TaskGroupID), so use sparingly.
-  //
   // Mutex usage: taskCountMutex_
   size_t pendingTasks(void) const;
 

@@ -74,5 +74,13 @@ bool MPEventDispatcher::busy(void) {
 
   return false;
 }
+
+#ifdef USE_HASHING
+size_t MPEventDispatcher::getSize(TaskGroupID id) {
+  size_t destination = hasher_(id) % concurrentTaskCount_;
+  return dispatchers_[destination]->pendingTasks();
+}
+#endif
+
 }
 
