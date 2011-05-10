@@ -2,12 +2,12 @@
 #define ED_SVR_CONN_H_
 
 #include <svr_common.h>
+#define MAXCLOC 1024
 
 #include <pthread.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
 
 // Server Socket IP/PORT
 #define SVR_SA    sockaddr
@@ -47,6 +47,9 @@ struct Conn {
   pthread_mutex_t   lock;  // connection lock
   size_t            nc;    // number of connections
 
+  struct timeval  lifetime;    // for accept polling
+  struct timeval  tim_accept;  // to estimate the lifetime
+
   // debug information
   char            curr_name[MAXCLOC];
   struct timeval  curr_time;
@@ -54,30 +57,38 @@ struct Conn {
   struct timeval  curr_stime;
   
   Conn() {
-    cpp = NULL; nc = 0;
     pthread_mutex_init(&lock, NULL);
+    cpp = NULL; nc = 0;
+
     // debug information
     snprintf(curr_name, MAXCLOC, "svr_conn_begin");
     gettimeofday(&curr_time, NULL);
+    gettimeofday(&tim_accept, NULL);
     struct rusage ru; getrusage(RUSAGE_SELF, &ru);
     curr_utime = ru.ru_utime;
     curr_stime = ru.ru_stime;
   }
 
-  ~Conn() {
-    pthread_mutex_destroy(&lock);
-   
+  ~Conn() {  
+    // debug
+    struct timeval tim; 
+    gettimeofday(&tim,NULL);
     if (DBGL >= 1) {
+      struct rusage ru;
       char * cname =  (char *) "svr_conn_end";
-      struct timeval tim; struct rusage ru;
-      gettimeofday(&tim,NULL);
-      getrusage(RUSAGE_SELF, &ru);   
+      getrusage(RUSAGE_SELF, &ru);
       assert(cpp != NULL);
       pthread_mutex_lock(&(cpp->lock));
       print_times((void *) this, curr_name, cname, curr_time, tim, curr_utime, ru.ru_utime, curr_stime, ru.ru_stime, (size_t) 0); 
       fflush(stdout);
       pthread_mutex_unlock(&(cpp->lock));
     }
+    // pirnt out lifetime
+    lifetime.tv_sec  = tim.tv_sec  - tim_accept.tv_sec;
+    lifetime.tv_usec = tim.tv_usec - tim_accept.tv_usec;
+    if (DBGL == -1) printf("%.9lf\n",convert_tim_sec(lifetime));
+
+    pthread_mutex_destroy(&lock);
   }
 
 };
