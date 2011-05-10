@@ -45,6 +45,13 @@ class MPEventDispatcher : public EventDispatcherInterface {
   void stop(void);
   void resume(void);
 
+#ifdef USE_HASHING
+  // For debugging only
+  // Returns the size of the task queue of the dispatcher of where id belongs to.
+  // Note that it can contain or not contain id and other ids.
+  size_t getSize(TaskGroupID id);
+#endif
+  
   // Returns true if there are pending jobs. The correctness of this method
   // assumes that enqueueTask will not be called externally while executing.
   bool busy(void);
