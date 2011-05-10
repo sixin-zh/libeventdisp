@@ -49,66 +49,69 @@ class Conn {
   pthread_mutex_t   lock;  // connection lock
   size_t            nc;    // number of connections
 
-  struct timeval  lifetime;    // for accept polling
-  struct timeval  acceptime;  // to estimate the lifetime
 
   // debug information
   char            curr_name[MAXCLOC];
   struct timeval  curr_time;
   struct timeval  curr_utime;
   struct timeval  curr_stime;
-  
+
+  struct timeval  lifetime;   // for accept polling
+  struct timeval  acceptime;  // to estimate the lifetime
+  size_t          curr_nc;    // current # of conns
 
   Conn(Conn * cn) {
     pthread_mutex_init(&lock, NULL);
-    cpp = NULL; nc = 0;
+    cpp = NULL; nc = 0; curr_nc = 0;
     lifetime.tv_sec = DefaultLifeTIME; lifetime.tv_usec = 0;
 
     if (cn != NULL) { // parent
       cpp = cn;
       pthread_mutex_lock(&(cpp->lock));
-      ++cpp->nc;
+      curr_nc = cpp->nc++;
       pthread_mutex_unlock(&(cpp->lock));
     }
 
+    if (DBGL == -1) gettimeofday(&acceptime, NULL);
     // debug information
-    snprintf(curr_name, MAXCLOC, "svr_conn_begin");
-    gettimeofday(&curr_time, NULL);
-    gettimeofday(&acceptime, NULL);
-    struct rusage ru; getrusage(RUSAGE_SELF, &ru);
-    curr_utime = ru.ru_utime;
-    curr_stime = ru.ru_stime;
+    if (DBGL >= 1) {
+      snprintf(curr_name, MAXCLOC, "svr_conn_begin");
+      gettimeofday(&curr_time, NULL);
+      struct rusage ru; getrusage(RUSAGE_SELF, &ru);
+      curr_utime = ru.ru_utime;
+      curr_stime = ru.ru_stime;
+    }
   }
 
   ~Conn() {  
-    struct timeval tim; struct rusage ru;
-    gettimeofday(&tim,NULL);
-    getrusage(RUSAGE_SELF, &ru);
-    lifetime.tv_sec  = tim.tv_sec  - acceptime.tv_sec;
-    lifetime.tv_usec = tim.tv_usec - acceptime.tv_usec;
+
+    if (DBGL >= 1) {
+      char * cname =  (char *) "svr_conn_end";
+      struct timeval tim; struct rusage ru;
+      gettimeofday(&tim,NULL);
+      getrusage(RUSAGE_SELF, &ru);
+      assert(cpp != NULL);
+      pthread_mutex_lock(&(cpp->lock));
+      print_times((void *) this, curr_name, cname, curr_time, tim, curr_utime, ru.ru_utime, curr_stime, ru.ru_stime, (size_t) 0); 
+      fflush(stdout);
+      pthread_mutex_unlock(&(cpp->lock));
+    }
 
     if (cpp != NULL) {
       pthread_mutex_lock(&(cpp->lock));
       --cpp->nc;
-      cpp->lifetime.tv_sec = cpp->lifetime.tv_sec + LearningRATE * (lifetime.tv_sec - cpp->lifetime.tv_sec);
-      cpp->lifetime.tv_usec = cpp->lifetime.tv_usec + LearningRATE * (lifetime.tv_usec - cpp->lifetime.tv_usec);
       pthread_mutex_unlock(&(cpp->lock));
     }
 
-    if (DBGL == -1) { printf("%.9lf\n", convert_tim_sec(lifetime)); fflush(stdout); } // pirnt out the lifetime
-
     // debug
-    if (DBGL >= 1) {
-      char * cname =  (char *) "svr_conn_end";
-      assert(cpp != NULL);
-      if (cpp != NULL) {
-	pthread_mutex_lock(&(cpp->lock));
-	print_times((void *) this, curr_name, cname, curr_time, tim, curr_utime, ru.ru_utime, curr_stime, ru.ru_stime, (size_t) 0); 
-	fflush(stdout);
-	pthread_mutex_unlock(&(cpp->lock));
-      }
-    }
-
+    if (DBGL == -1) { 
+      struct timeval tim;
+      gettimeofday(&tim,NULL);
+      lifetime.tv_sec  = tim.tv_sec  - acceptime.tv_sec;
+      lifetime.tv_usec = tim.tv_usec - acceptime.tv_usec;
+      printf("%zu, %.9lf\n", curr_nc, convert_tim_sec(lifetime)); fflush(stdout);
+    } // pirnt out the lifetime
+    
     pthread_mutex_destroy(&lock);
   }
 
