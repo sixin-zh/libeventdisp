@@ -43,14 +43,13 @@ module LibeventdispBenchmark
     thread_load = get_thread_load(thread_count)
 
     test_pattern = [
+      [1, 100],
+      [1, 1000],
       [10, 1000],
-      [100, 100],
       [100, 1000],
       [1000, 100],
       [1000, 1000],
       [100, 10000],
-      [1000, 10000],
-      [10000, 1000],
     ]
 
     test_pattern.each do |arg|
