@@ -66,11 +66,8 @@ bool checkEqual(CharCountBlock **count1, CharCountBlock **count2,
   return ret;
 }
 
-// Method is designed to have a max(splitCount) == 4
 void doTest(size_t splitSize, size_t splitCount,
             size_t generateCount, bool fitToCacheLine) {
-  assert(splitCount <= 4);
-  
   const unsigned char MAX_CHAR = splitCount * splitSize;
   const size_t TEST_SIZE = splitCount * generateCount;
 

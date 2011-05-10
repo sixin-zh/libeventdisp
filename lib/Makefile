@@ -1,5 +1,5 @@
 CXX = g++
-TEST = -DUSE_HASHING
+TEST = -DUSE_HASHING -DLIBEVENT_USE_SIG
 CXXFLAGS = -Wall -Wextra -O2 -fPIC -lpthread -ltr -Iinc $(TEST)
 
 OBJ = event_dispatcher.o mp_event_dispatcher.o thread.o dispatcher.o aio_wrapper.o \

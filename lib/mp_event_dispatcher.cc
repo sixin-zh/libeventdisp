@@ -31,7 +31,7 @@ bool MPEventDispatcher::enqueueTask(UnitTask *newTask) {
   size_t taskDestination;
 
 #ifdef USE_HASHING
-  taskDestination = hasher_(newTask->id);
+  taskDestination = hasher_(newTask->id) % concurrentTaskCount_;
 #else
   {
     ScopedLock scopedToken(&tokenMutex_);

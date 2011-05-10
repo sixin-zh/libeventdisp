@@ -6,9 +6,6 @@
 #include <cstring>
 #include <cerrno>
 
-
-#define LIBEVENT_USE_SIG 1
-
 using nyu_libeventdisp::Dispatcher;
 using std::tr1::bind;
 using std::tr1::function;
