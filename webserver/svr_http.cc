@@ -18,48 +18,57 @@ using nyu_libeventdisp::IOErrCallback;
 using nyu_libeventdisp::IOCallback;
 using namespace std::tr1::placeholders;
 
+#define CacheTaskID 0  
+#define ReadTaskID  (NDISPATCHER>1)?(cn->cfd%(NDISPATCHER-1))+1:0
 
-// #define MAXCSIZE 65536
 static Cache _cache(MAXCSIZE);
 
-// #define CacheTaskID 0
-
-static const char * _websvrd      = "Rain/1.x";
-
-// Status line
+// Reply Header
 #define CRLF "\r\n"
+static const char * _websvrd      = "websvrd/g";
 static const char * _sline_200[2] = {"HTTP/1.0 200 OK"         , "HTTP/1.1 200 OK"};          //
 static const char * _sline_400[2] = {"HTTP/1.0 400 Bad Request", "HTTP/1.1 400 Bad Request"}; //
 static const char * _sline_404[2] = {"HTTP/1.0 404 Not Found"  , "HTTP/1.1 404 Not Found"};   //
 
-// Read HTTP request [ACCETP, PARSE, FINAL]
+// Read HTTP Request [ACCETP,PARSE,FINAL]
 ErrHTTP svr_http_read(HPKG * &pk) {
-
-  if (DBGL >= 5) { printf("[svr_http] read \n"); fflush(stdout); }
 
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * cn = pk->cpn;
 
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_read";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
+
   if (DBGL >= 4) printf("[svr_http_read] hpkg=%p, cn=%p\n",pk, cn);
 
   if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_R)) {
-    if (DBGL >= 1) printf("[svr_http_read] conn error, hpkg=%p, cn=%p\n",pk, cn);    
+    if (DBGL >= 2) printf("[svr_http_read] conn error, hpkg=%p, cn=%p\n",pk, cn);    
     return svr_http_final(pk); }
 
   pk->hst = HS_READING;
 
-  if (DBGL >= 5) { printf("[svr_http_read] chead.p\n"); fflush(stdout); }
   // read header, assume no body, footer...
   if (pk->chead.p == NULL) { pk->chead.n = 0; pk->chead.p = (char *) malloc(MAXRH); }
   memset(pk->chead.p, '\0', sizeof(char)*MAXRH);
 
-  if (DBGL >= 5) { printf("[svr_http_read] ioCB"); fflush(stdout); }
   IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_parse_aio, pk, _1, _2, _3));
   IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
-  IOCallback    * ioCB  = new IOCallback(okCB, errCB, cn->cfd);  // PALL: SIDEEFFECT ON LINE 172,  // TOTO: RReadTaskID
+  IOCallback    * ioCB  = new IOCallback(okCB, errCB, ReadTaskID);
 
-  if (DBGL >= 5) { printf("[svr_http_read] call aio_read, pk=%p, cn=%p, buf=%p\n", pk, cn, pk->chead.p); fflush(stdout); }
   int nret = aio_read(cn->cfd, static_cast<void *> (pk->chead.p), MAXRH-1, 0, ioCB); // end with '\0' 
   if (DBGL >= 0) assert(nret == 0);
 
@@ -76,18 +85,29 @@ ErrHTTP svr_http_read(HPKG * &pk) {
 // TOTO: proxy, GET http://www.somehost.com/path/file.html HTTP/1.0
 ErrHTTP svr_http_parse(HPKG * &pk) {
 
-  if (DBGL >= 5) { printf("[svr_http] parse \n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
 
-  if (DBGL >= 5) { printf("[svr_http] parse cn="); fflush(stdout); printf("%p\n", pk->cpn); fflush(stdout); }
   Conn * cn = pk->cpn;
+
+  if (DBGL >= 1) {
+    char * cname =  (char *) "svr_http_parse";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
 
   if (DBGL >= 4) printf("[svr_http_parse] hpkg=%p, cn=%p\n", pk, cn);
 
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1)  printf("[svr_http_parse] conn error, hpkg=%p\n", pk); 
-    return svr_http_final(pk); } 
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
 
   pk->hst = HS_PARSING;
 
@@ -100,7 +120,6 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
     // parse line by line
     char * pt = strstr(ph, CRLF);
     if (pt==NULL) pt = pe;
-    // if (DBGL >= 6) { char _bk = *pt; *pt = '\0'; printf("[svr_http_parse] line [%s]\n", ph); *pt = _bk; }
 
     // GET
     if (strncmp(ph,"GET ",4) == 0) { // "GET " + URI + ' ' + "HTTP/1.*"
@@ -111,7 +130,6 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
       gk->met.n = 3;
       gk->met.p = (char *) malloc(gk->met.n+1); // end with '\0'
       strcpy(gk->met.p, "GET");
-      // if (DBGL >= 6) printf("[svr_http_parse] met: %s [%s]\n", gk->met.p, ph);
 
       // uri
       ph = ph + 4;  // URI + ' ' + "HTTP/1.*"
@@ -122,7 +140,6 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 	gk->uri.p = (char *) malloc(gk->uri.n+1); // end with '\0'
 	memcpy(gk->uri.p, ph, gk->uri.n); 
 	gk->uri.p[gk->uri.n] = '\0';
-	//if (DBGL >= 6) printf("[svr_http_parse] uri: %s [%s]\n", gk->uri.p, ph);
       
 	// ver
 	ph = ps + 1;
@@ -132,7 +149,6 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 	  memcpy(gk->ver.p, ph, gk->ver.n);
 	  gk->ver.p[gk->ver.n] = '\0';
 	}
-	//if (DBGL >= 6) printf("[svr_http_parse] ver: %s [%s]\n", gk->ver.p, ph);
       } // else bad GET request (no uri or no ver)
 
       if (DBGL >= 5) printf("[svr_http_parse] new hpkg=%p, cn=%p, met=%s, ver=%s, uri=%s\n", gk, cn, gk->met.p, gk->ver.p, gk->uri.p);
@@ -160,8 +176,8 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
   }
   else { // NO GET TASK !
     // continue "reading"
-    if (DBGL >= 4) printf("[svr_http_parse] keepalive, current pool size = %zu\n", (cn->cpp)->nc );
-    bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, pk), cn->cfd));      // TOTO: RReadTaskID
+    if (DBGL >= 5) printf("[svr_http_parse] keepalive, current pool size = %zu\n", (cn->cpp)->nc );
+    bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, pk), ReadTaskID)); 
     if (DBGL >= 0) assert(bret == true);
   }
 
@@ -169,23 +185,34 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 } 
 
 
-
 // Parse AIO
 ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbytes) {
 
-  if (DBGL >= 5) { printf("[svr_http] parse aio \n"); fflush(stdout); }
-  
   if (DBGL >= 0) assert(pk != NULL);
-  if (DBGL >= 0) assert(pk->chead.p == buf);
 
   Conn * cn = pk->cpn;
 
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_parse_aio";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
+
+  if (DBGL >= 0) assert(pk->chead.p == buf);
   if (DBGL >= 6) { printf("[svr_http_parse_aio] new request (hpkg=%p, cn=%p, fd=%d, nbytes=%zu):\n%s\n", pk, cn, fd, nbytes, pk->chead.p);  fflush(stdout); }
   else if (DBGL >= 5) { printf("[svr_http_parse_aio] new request (hpkg=%p, cn=%p, fd=%d, nbytes=%zu)\n", pk, cn, fd, nbytes);  fflush(stdout);  }
   
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1) printf("[svr_http_parse_aio] conn error, hpkg=%p\n", pk); 
-    return svr_http_final(pk); }
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
 
   pk->hst = HS_PARSING;
 
@@ -194,10 +221,7 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
   pk->chead.n = nbytes-1; // '\0 not counted
 
   // continue reading new request if not EOF
-  if (nbytes == 0) { // EOF
-    if (DBGL >= 1) { printf("[svr_http_parse_aio] zero bytes read, cn=%p, hpkg=%p\n", cn, pk);  fflush(stdout); }
-    return svr_http_final_aio(pk, fd, 0);
-  }
+  if (nbytes == 0) return svr_http_final_aio(pk, fd, 0);
   
   return svr_http_parse(pk);
 }
@@ -206,9 +230,26 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
 // FETCH; PUT; (CANCEL) [CacheTaskID]
 ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
-  if (DBGL >= 5) { printf("[svr_http] header rio \n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
+
+  Conn * cn = pk->cpn;
+
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_header_rio";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
+
   if (DBGL >= 4) printf("[svr_http_header_rio] hpkg=%p, cn=%p, uri=%s, hfd=%d\n", pk, pk->cpn, pk->uri.p, pk->hfd);
 
   pk->hst = HS_FETCHING;
@@ -219,7 +260,7 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
 
     if (pk->hfd < 0) { // 404
 
-      if (DBGL >= 4) printf("[svr_http_header_rio] file open 404, pk=%p, hfd=%d\n", pk, pk->hfd);
+      if (DBGL >= 5) printf("[svr_http_header_rio] file open 404, pk=%p, hfd=%d\n", pk, pk->hfd);
       pk->hsn = N_404;
 
       // fetch
@@ -235,7 +276,7 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
     }
     else {             // 200
 
-      if (DBGL >= 4) printf("[svr_http_header_rio] file open 200, pk=%p, hfd=%d\n", pk, pk->hfd);
+      if (DBGL >= 5) printf("[svr_http_header_rio] file open 200, pk=%p, hfd=%d\n", pk, pk->hfd);
       pk->hsn = N_200;
 
       // FETCH
@@ -248,8 +289,6 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
 
       // MALLOC
       if (DBGL >= 0) assert (pk->chead.p == NULL);
-
-
       pk->chead.p = (char*) malloc (MAXWH); 
 
       // Date
@@ -284,7 +323,6 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
       if (DBGL >= 0) assert(isput == true);
       pk->chead.cached = isput;
 
-
     } // end 200
     
   } // end open
@@ -296,9 +334,27 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
 // [CacheTaskID]
 ErrHTTP svr_http_header_to_body_aio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
-  if (DBGL >= 5) { printf("[svr_http] header to body aio\n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
+
+  Conn * cn = pk->cpn;
+
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_header_to_body_aio";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
+
+
   if (DBGL >= 4) printf("[svr_http_header_to_body_aio] hpkg=%p, cn=%p, hsn=%d\n", pk, pk->cpn,  pk->hsn);
 
   pk->hst = HS_UNKNOWN;
@@ -315,21 +371,33 @@ ErrHTTP svr_http_header_to_body_aio(HPKG * &pk, int &fd, void * buf, const size_
 // Got TODO: parallize the cache callback
 ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
 
-  if (DBGL >= 5) { printf("[svr_http] header wio \n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 6) printf("[svr_http_header_wio] hpkg=%p, cn=%p, data=%s\n", pk, cn, cd.data);
-  else if (DBGL >= 4) printf("[svr_http_header_wio] hpkg=%p, cn=%p, nbytes=%zu\n", pk, cn, cd.size);
-
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1) printf("[svr_http_header_wio] conn error, hpkg=%p\n", pk); 
-    return svr_http_final(pk); }
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_header_wio";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
 
   pk->hst = HS_WRITING;
   pk->wst = WS_HEAD;
+
+  if (DBGL >= 6) printf("[svr_http_header_wio] hpkg=%p, cn=%p, data=%s\n", pk, cn, cd.data);
+  else if (DBGL >= 4) printf("[svr_http_header_wio] hpkg=%p, cn=%p, nbytes=%zu\n", pk, cn, cd.size);
+
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk); 
 
   // hsn
   const char * loc = cd.data+9;
@@ -355,28 +423,38 @@ ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
 // Get Head [CacheTaskID]
 ErrHTTP svr_http_header(HPKG * &pk) {
 
-  if (DBGL >= 5) { printf("[svr_http] header \n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 4) printf("[svr_http_header] hpkg=%p, cn=%p\n", pk, cn);
-
-  if (DBGL >= 5) { printf("[svr_http] check closing \n"); fflush(stdout); }
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1) printf("[svr_http_header] conn error, hpkg=%p \n", pk); 
-    return svr_http_final(pk); }
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_header";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
 
   pk->hst = HS_FETCHING;
   pk->wst = WS_HEAD;
 
+  if (DBGL >= 4) printf("[svr_http_header] hpkg=%p, cn=%p\n", pk, cn);
+
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
+
   CacheCallback * cCB = new CacheCallback(BIND(svr_http_header_wio, pk, _1));
 
-  if (DBGL >= 5) { printf("[svr_http] get key value \n"); fflush(stdout); }  
   if (pk->headkey.p == NULL) { pk->headkey.p = (char *) malloc(MAXKEYS); pk->headkey.cached = false; pk->headkey.p[MAXKEYS-1] = '\0'; }
   strncpy(pk->headkey.p, pk->uri.p, MAXKEYS-1); 
-  pk->headkey.n = strlen(pk->headkey.p); // pk->uri.n;
+  pk->headkey.n = strlen(pk->headkey.p);
   if (!_cache.get(pk->headkey.p, cCB)) {
     bool rsvp = _cache.reserve(pk->headkey.p);
     if (DBGL >= 0) assert(rsvp == true);
@@ -390,31 +468,46 @@ ErrHTTP svr_http_header(HPKG * &pk) {
 }
 
 
-// 400 ERROR [CacheTaskID]
+// 400 ERROR ? [CacheTaskID]
 ErrHTTP svr_http_write_400(HPKG * &pk) {
 
-  if (DBGL >= 5) { printf("[svr_http] write 400 \n"); fflush(stdout); }
+  if (DBGL >= 0) assert(pk != NULL);
+
+  Conn * cn = pk->cpn;
+
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_write_400";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
  
-  if (DBGL >= 1) assert(pk != NULL);
-  
   pk->hst = HS_WRITING;
   pk->wst = WS_HEAD;
   pk->hsn = N_400;
 
-  Conn * cn = pk->cpn;
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
+  if (DBGL >= 4) printf("[svr_http_write_400] hpkg=%p, cn=%p\n", pk, cn);
 
-  if (DBGL >= 2) printf("[svr_http_write_400] hpkg=%p, cn=%p\n", pk, cn);
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
 
   IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_body_rio, pk, _1, _2, _3));
   IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
-  IOCallback    * ioCB  = new IOCallback(okCB, errCB, CacheTaskID); // [CacheTaskID]
+  IOCallback    * ioCB  = new IOCallback(okCB, errCB); // ? [CacheTaskID]
 
   size_t _ss = strlen(_sline_400[1])+2*strlen(CRLF)+1;
   pk->chead.p = (char*) malloc(_ss);
   pk->chead.n = snprintf(pk->chead.p, _ss, "%s%s%s", _sline_400[1], CRLF, CRLF);
   int nret = aio_write(cn->cfd, (void *) pk->chead.p, pk->chead.n, 0, ioCB);
-  if (DBGL >= 0) assert(nret == 0); //  return svr_http_final(pk);
+  if (DBGL >= 0) assert(nret == 0); // return svr_http_final(pk);
   
   return EHTTP_OK;
 }
@@ -423,17 +516,29 @@ ErrHTTP svr_http_write_400(HPKG * &pk) {
 // FETCH URI [CacheTaskID]
 ErrHTTP svr_http_fetch(HPKG * &pk) { 
 
-  if (DBGL >= 5) { printf("[svr_http] fetch\n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 2) printf("[svr_http_fetch] hpkg=%p, cn=%p, met=%s, ver=%s, uri=%s\n", pk, cn, pk->met.p, pk->ver.p, pk->uri.p);
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_fetch";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
 
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) { 
-    if (DBGL >= 1) printf("[svr_http_fetch] pk=%p, cn=%p, conn error\n", pk, cn); 
-    return svr_http_final(pk); }
+  if (DBGL >= 4) printf("[svr_http_fetch] hpkg=%p, cn=%p, met=%s, ver=%s, uri=%s\n", pk, cn, pk->met.p, pk->ver.p, pk->uri.p);
+
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
 
   pk->hst = HS_FETCHING;
   pk->wst = WS_HEAD;
@@ -459,25 +564,38 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
 // GOT, TODO: parallel this callback by cache
 ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
 
-  if (DBGL >= 5) { printf("[svr_http] body wio\n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
 
-  if (DBGL >= 1)  printf("[svr_http_body_wio] hpkg=%p, cn=%p\n", pk, pk->cpn); 
+ Conn * cn = pk->cpn;
 
-  // cancel(ed)
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_body_wio";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
+
+  if (DBGL >= 4)  printf("[svr_http_body_wio] hpkg=%p, cn=%p\n", pk, pk->cpn); 
+
+  // if cancel(ed)
   if (cd.data == NULL) {
     return svr_http_final(pk);
   }
 
-  // put(ed)
-  Conn * cn = pk->cpn;
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W))  { 
-    if (DBGL >= 1)  printf("[svr_http_body_wio] hpkg=%p, cn=%p, conn error\n", pk, pk->cpn); 
-    return svr_http_final_aio(pk, cn->cfd, 0); }
+  // if put(ed)
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final_aio(pk, cn->cfd, 0);
 
   if (DBGL >= 6) printf("[svr_http_body_wio] hpkg=%p, cn=%p, nbytes=%zu, data=%s\n", pk, cn, cd.size, cd.data);
-  else if (DBGL >= 3) printf("[svr_http_body_wio] hpkg=%p, cn=%p, nbytes=%zu\n", pk, cn, cd.size);
+  else if (DBGL >= 5) printf("[svr_http_body_wio] hpkg=%p, cn=%p, nbytes=%zu\n", pk, cn, cd.size);
 
   pk->hst = HS_WRITING;
   pk->wst = WS_BODY;
@@ -495,12 +613,30 @@ ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
 // WRITTEN [CacheTaskID]
 ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
-  if (DBGL >= 5) { printf("[svr_http] body rio\n"); fflush(stdout); }
+  if (DBGL >= 0) assert(pk != NULL);
+
+  Conn * cn = pk->cpn;
+
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_body_rio";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
 
   if (DBGL >= 4) printf("[svr_http_body_rio] hpkg=%p, wst=%d\n", pk, pk->wst);
 
   if (pk->wst == WS_BODY) {
-    if (DBGL >= 2) printf("[svr_http_body_rio] done with hpkg %p, body key =%s\n", pk, pk->bodykey.p); 
+    if (DBGL >= 5) printf("[svr_http_body_rio] done with hpkg %p, body key =%s\n", pk, pk->bodykey.p); 
     if (pk->bodykey.p != NULL) _cache.doneWith(pk->bodykey.p);
     if (nbytes > 0) {    // ! EOF     
       pk->tr_offset += nbytes;
@@ -519,7 +655,25 @@ ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
 // PUT [CacheTaskID]
 ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes) {
 
-  if (DBGL >= 5) { printf("[svr_http] body pio\n"); fflush(stdout); }
+  if (DBGL >= 0) assert(pk != NULL);
+
+  Conn * cn = pk->cpn;
+ 
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_body_pio";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+        assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
 
   if (DBGL >= 4) printf("[svr_http_body_pio] hpkg=%p, put key=%s, size=%zu, data=%s\n", pk, pk->bodykey.p, nbytes, (char *) buf);
 
@@ -534,23 +688,37 @@ ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
 // FETCH BODY [CacheTaskID]
 ErrHTTP svr_http_body(HPKG * &pk) {
   
-  if (DBGL >= 5) { printf("[svr_http] body \n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
-  if (DBGL >= 4) printf("[svr_http_body] hpkg=%p, wst=%d\n", pk, pk->wst);
 
   Conn * cn = pk->cpn;
-  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) {
-    if (DBGL >= 1) printf("[svr_http_body] conn error, hpkg=%p\n", pk);
-    return svr_http_final(pk); }
+
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_body";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
+
+  if (DBGL >= 4) printf("[svr_http_body] hpkg=%p, wst=%d\n", pk, pk->wst);
 
   pk->hst = HS_FETCHING;
-  pk->wst = WS_BODY;   //  if (pk->hsn == N_200) { // pk->enc == TE_IDE
+  pk->wst = WS_BODY;
+
+  if ((cn->cst == CS_CLOSING) || (cn->cst == CS_CLOSING_W)) return svr_http_final(pk);
   
   // new key
   if (pk->bodykey.p == NULL) { pk->bodykey.p = (char *) malloc(MAXKEYS); pk->bodykey.cached = false; pk->bodykey.p[MAXKEYS-1] = '\0'; }
   pk->bodykey.n = snprintf(pk->bodykey.p, MAXKEYS, "%s#%zu", pk->uri.p, pk->tr_offset);
-  if (DBGL >= 3) printf("[svr_http_body] use body key: %s [%zu]\n", pk->bodykey.p, pk->bodykey.n);
+  if (DBGL >= 5) printf("[svr_http_body] use body key: %s [%zu]\n", pk->bodykey.p, pk->bodykey.n);
 
   // get
   CacheCallback * cCB = new CacheCallback(BIND(svr_http_body_wio, pk, _1));
@@ -560,9 +728,9 @@ ErrHTTP svr_http_body(HPKG * &pk) {
     cCB = new CacheCallback(BIND(svr_http_body_wio, pk, _1));
     bool iscac = _cache.get(pk->bodykey.p, cCB);
     if (DBGL >= 0) assert(iscac == true); // return svr_http_final(pk);
-	
+
     pk->cbody.p = (char *) malloc(MAXWB);
-    if (pk->hfd == -1) { printf("[svr_http_body] to open file\n"); pk->hfd = open(pk->uri.p, O_RDONLY); } // ! blocking
+    if (pk->hfd == -1) pk->hfd = open(pk->uri.p, O_RDONLY); // ! blocking
     
     IOOkCallback  * okCB  = new IOOkCallback(BIND(svr_http_body_pio, pk, _1, _2, _3));
     IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2)); // to cancel Reservation
@@ -578,14 +746,27 @@ ErrHTTP svr_http_body(HPKG * &pk) {
 // [CacheTaskID]
 ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
 
-  if (DBGL >= 5) { printf("[svr_http] final aio\n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
-  if (DBGL >= 0) assert(pk->cpn != NULL);
 
   Conn * cn = pk->cpn; 
 
-  if (DBGL >= 2) printf("[svr_http_final_aio] hpkg=%p, cn=%p, cn->cst=%d, error code=%d\n", pk, cn, cn->cst, errcode);
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_final_aio";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
+
+  if (DBGL >= 4) printf("[svr_http_final_aio] hpkg=%p, cn=%p, cn->cst=%d, error code=%d\n", pk, cn, cn->cst, errcode);
 
   if (DBGL >= 0) assert(cn->cst != CS_CLOSING);
 
@@ -609,7 +790,7 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
 
     // cancelReservation
     if ((pk->hst == HS_FETCHING) && (pk->wst == WS_BODY)) { // _cache.cancelReservation(pk->headkey.p);
-      printf("[svr_http_final_aio] fetching (body) error, cancel key = %s\n", pk->bodykey.p);
+      if (DBGL >= 5) printf("[svr_http_final_aio] fetching (body) error, cancel key = %s\n", pk->bodykey.p);
       _cache.cancelReservation(pk->bodykey.p);
       return EHTTP_FINAL;
     }
@@ -617,17 +798,16 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
     // doneWith
     if ((pk->hst == HS_WRITING) && (pk->wst == WS_HEAD))  {
       if (DBGL >= 0) assert(pk->headkey.p != NULL);
-      if (DBGL >= 1) printf("[svr_http_final_aio] done with hpkg %p, head key =%s\n", pk, pk->headkey.p); 
+      if (DBGL >= 5) printf("[svr_http_final_aio] done with hpkg %p, head key =%s\n", pk, pk->headkey.p); 
       _cache.doneWith(pk->headkey.p);
     }
 
     if ((pk->hst == HS_WRITING) && (pk->wst == WS_BODY))  {
       if (DBGL >= 0) assert(pk->bodykey.p != NULL);
-      if (DBGL >= 1) printf("[svr_http_final_aio] done with hpkg %p, body key =%s\n", pk, pk->bodykey.p); 
+      if (DBGL >= 5) printf("[svr_http_final_aio] done with hpkg %p, body key =%s\n", pk, pk->bodykey.p); 
       _cache.doneWith(pk->bodykey.p);
     }
   }
-
 
   return svr_http_final(pk);
 }
@@ -635,12 +815,26 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
 // TODO: cfd
 ErrHTTP svr_http_final(HPKG * &pk) {
 
-  if (DBGL >= 5) { printf("[svr_http] final \n"); fflush(stdout); }
-
   if (DBGL >= 0) assert(pk != NULL);
-  if (DBGL >= 0) assert(pk->cpn != NULL);  
 
-  Conn *   cn  = pk->cpn;
+  Conn * cn  = pk->cpn;
+
+  if (DBGL >= 1) {
+    char * cname = (char *) "svr_http_final";
+    struct timeval tim; struct rusage ru;
+    gettimeofday(&tim,NULL);
+    getrusage(RUSAGE_SELF, &ru);   
+    assert(cn != NULL); assert(cn->cpp != NULL);
+    pthread_mutex_lock(&(cn->cpp->lock));
+    print_times(cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime); 
+    pthread_mutex_unlock(&(cn->cpp->lock));
+    snprintf(cn->curr_name, MAXCLOC, "%s", cname);
+    getrusage(RUSAGE_SELF, &ru);
+    cn->curr_utime = ru.ru_utime;
+    cn->curr_stime = ru.ru_stime;
+    gettimeofday(&(cn->curr_time),NULL);
+  }
+
   HPKG *  park = pk->ppg;
   HPKG *  fget = pk->nsg;
 
@@ -652,6 +846,8 @@ ErrHTTP svr_http_final(HPKG * &pk) {
 
   if (park == NULL) { // EOF, close connection
     if (DBGL >= 5) { printf("[svr_http_final] park \n"); fflush(stdout); }
+    // bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_conn_close, cn), (ndisp_nocache>0)?(cn->cfd%ndisp_nocache)+1:RReadTaskID ));
+    // if (DBGL >= 0) assert(bret == true);
     svr_conn_close(cn);
     if (DBGL >= 5) { printf("[svr_http_final] conn closed\n"); fflush(stdout); }
   }
@@ -661,11 +857,11 @@ ErrHTTP svr_http_final(HPKG * &pk) {
 
     if (DBGL >= 5) { printf("[svr_http_final] keepalive\n"); fflush(stdout); }
 
-    if (DBGL >= 4) { 
+    if (DBGL >= 5) { 
       printf("[svr_http_final] keepalive cn=%p, hpkg=%p, current pool size = %zu\n", cn, park, (cn->cpp)->nc);
       fflush(stdout); }
 
-    bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, park), cn->cfd));  // TOTO: RReadTaskID
+    bool bret = Dispatcher::instance()->enqueue(new UnitTask(BIND(svr_http_read, park), ReadTaskID));
     if (DBGL >= 0) assert(bret == true);
 
   }

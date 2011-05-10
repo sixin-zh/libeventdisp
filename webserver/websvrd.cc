@@ -37,7 +37,7 @@ void svr_stop() {
 /* Entrance */
 int main(int argc, char **argv) {
 
-  Dispatcher::init(4,true);
+  Dispatcher::init(NDISPATCHER,true);
 
   svrC = NULL; 
   svr_start(); 

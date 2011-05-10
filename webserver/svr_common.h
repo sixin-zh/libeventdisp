@@ -11,31 +11,24 @@
 #include <sys/types.h>
 
 
-// server debug (verbal) level 0,1,2,3,4,...
-#define DBGL 0
+// Server Debug (verbal) Level -1,0,1,2,3,4,...
+#define DBGL 1
 #include <assert.h>
 #include <errno.h>
 
 
-// Pool for general resource management
-/* #include <list> */
-/* template<class T> */
-/* struct POOL { */
-/*   typedef std::list<T> L; */
-/* }; */
+// Server Parameters
+#define NDISPATCHER 2
 
-
-// Parameters
-#define MaxCSL  1024 // 511   // max backlog: SOMAXCONN [socket dependent]
+#define MaxCSL  512   // SOMAXCONN
 
 #define ReadTimeoutUSEC 0
 #define ReadTimeoutSEC  5 // <- 30
 
-#define MaxACCEPT  4096 // 600
-#define ACSLEEPTIME_U 500000
+#define MaxACCEPT     1024
+#define ACSLEEPTIME_U 50000
 
 #define MAXCSIZE 65536 // cache size
-#define CacheTaskID 0  
 
 #define MAXKEYS 256    // cache key length
 
@@ -43,15 +36,18 @@
 #define MAXWH   8192    // write head size
 #define MAXWHL  256     // max 32 lines for head
 
-#define MAXWB   1048576 // body block size 1024K
+#define MAXWB   65536 // 1048576 // body block size 1024K
 
 
 #endif
 
 
+#include <time.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+void print_times(char * src, char * dest, timeval &prev, timeval &curr, timeval &prev_u, timeval &curr_u, timeval &prev_s, timeval &curr_s);
+
 
 //#include <arpa/inet.h>
-//#include <sys/time.h>
-//#include <time.h>
 //#include <unistd.h>
 //#include <sys/wait.h>
