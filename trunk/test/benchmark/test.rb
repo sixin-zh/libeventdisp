@@ -89,7 +89,7 @@ if __FILE__ == $0 then
   else
     THREAD_COUNT = ARGV[0].to_i
 
-#    LibeventdispBenchmark.conv_test THREAD_COUNT
+    LibeventdispBenchmark.conv_test THREAD_COUNT
     LibeventdispBenchmark.char_test THREAD_COUNT
   end
 end
