@@ -17,23 +17,6 @@ int socketSetBlockingAndTimeout(int sockfd) {
   ret = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(struct timeval));
   if (ret < 0) return -1; //  printf("*****setsocket (fd=%d)  recv timeout ret = %d, errno = %d*****\n", sockfd, ret, errno);
 
-  // // get buffer size
-  // socklen_t optlen;
-
-  // int sendbuff;  optlen = sizeof(sendbuff);
-  // ret = getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &sendbuff, &optlen);
-  // if (ret < 0) return -1;
-  // else printf("send buffer size = %d\n", sendbuff);
-
-  // int readbuff;  optlen = sizeof(sendbuff);
-  // ret = getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &readbuff, &optlen);
-  // if (ret < 0) return -1;
-  // else printf("recv buffer size = %d\n", readbuff);
-   
-  //SO_SNDBUF      set buffer size for output 
-  //SO_RCVBUF      set buffer size for input 
-  //SO_SNDLOWAT    set minimum count for output 
-
   return 0;
 }
 
@@ -60,12 +43,6 @@ ErrConn svr_conn_listen(Conn * &cn) {
   // set SO_REUSEADDR
   int optval = 1;
   setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
-
-  // // keepalive
-  // if (socketSetBlockingAndTimeout(listenfd) < 0) {
-  //   if (DBGL >= 2) printf("[svr_conn_accept]  fail to set nonblicking and timeout\n"); // when fd or accept limit exceeded
-  //   return ERRCONN_AC;
-  // }
 
   // bind servaddr to socket
   if ( (bind(listenfd, (SVR_SA *) &servaddr, sizeof(servaddr)) < 0) ) {
@@ -104,10 +81,6 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   while (MaxACCEPT < cn->nc) {
     if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %zu\n", cn->nc); // when accept limit exceeded
     sleep(DefaultLifeTIME);
-    //    if (cn->lifetime.tv_sec*(MaxACCEPT-MinACCEPT) > 1)  // polling
-	    //sleep(cn->lifetime.tv_sec*(MaxACCEPT-MinACCEPT));
-    //    else 
-      //usleep(cn->lifetime.tv_usec*(MaxACCEPT-MinACCEPT));
   }
 
   // wait to accept (in an 'endless' loop)
@@ -115,10 +88,6 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   if (connfd < 0) {
     if (DBGL >= 2) printf("[svr_conn_accept] accept fail, errorno: %d\n", errno); // when fd limit exceeded
     sleep(DefaultLifeTIME);
-    // if (cn->lifetime.tv_sec > 1)  // polling
-    //   sleep(cn->lifetime.tv_sec);
-    // else 
-    //   usleep(cn->lifetime.tv_usec);
     return ERRCONN_AC;
   }
   

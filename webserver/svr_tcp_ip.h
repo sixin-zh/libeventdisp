@@ -36,7 +36,7 @@ enum ConnST {
   CS_CLOSED
 };
 
-#define MAXCLOC 1024
+#define MAXCLOC 1024 // only for debug use (curr_name)
 // Conn is regarded as Session Layer in OSI model 
 class Conn {
 
@@ -59,9 +59,11 @@ class Conn {
   struct timeval  life_time;   
   struct timeval  life_utime;
   struct timeval  life_stime;
-  /* struct timeval  acceptime; */
-  /* struct timeval  acceptimeu; */
-  /* struct timeval  acceptimes; */
+
+  long curr_majflt;
+  long curr_nvcsw;
+  long curr_nivcsw;
+
   size_t          curr_nc;    // current # of conns (including itself)
 
   Conn(Conn * cn) {
@@ -75,7 +77,7 @@ class Conn {
       pthread_mutex_unlock(&(cpp->lock));
     }
 
-    if (DBGL == -1) {
+    if (DBGL == 1) {
       gettimeofday(&life_time, NULL);
       struct rusage ru; getrusage(RUSAGE_SELF, &ru);
       life_utime = ru.ru_utime;
@@ -90,11 +92,13 @@ class Conn {
       struct rusage ru; getrusage(RUSAGE_SELF, &ru);
       curr_utime = ru.ru_utime;
       curr_stime = ru.ru_stime;
+      curr_majflt = ru.ru_majflt;
+      curr_nvcsw  = ru.ru_nvcsw;
+      curr_nivcsw = ru.ru_nivcsw;
     }
   }
 
   ~Conn() {  
-
     // debug
     if (DBGL >= 1) {
       char * cname =  (char *) "svr_conn_end";
@@ -103,12 +107,14 @@ class Conn {
       getrusage(RUSAGE_SELF, &ru);
       assert(cpp != NULL);
       pthread_mutex_lock(&(cpp->lock));
+      printf("%d:", -1);
       print_times((void *) this, curr_name, cname, curr_time, tim, curr_utime, ru.ru_utime, curr_stime, ru.ru_stime, (size_t) 0); 
+      printf("%ld, %ld, %ld\n", ru.ru_majflt-curr_majflt, ru.ru_nvcsw-curr_nvcsw, ru.ru_nivcsw-curr_nivcsw);
       fflush(stdout);
       pthread_mutex_unlock(&(cpp->lock));
     }
 
-    if (DBGL == -1) { 
+    if (DBGL == 1) { 
       struct timeval tim; struct rusage ru;
       gettimeofday(&tim,NULL);
       getrusage(RUSAGE_SELF, &ru);
@@ -120,7 +126,7 @@ class Conn {
       life_stime.tv_usec = ru.ru_stime.tv_usec - life_stime.tv_usec;
       assert(cpp != NULL);
       pthread_mutex_lock(&(cpp->lock));
-      printf("%zu->%zu: %.9lf, %.9lf, %.9lf\n", curr_nc, cpp->nc, convert_tim_sec(life_time), convert_tim_sec(life_utime), convert_tim_sec(life_stime)); 
+      fprintf(stderr, "%zu->%zu: %.9lf, %.9lf, %.9lf\n", curr_nc, cpp->nc, convert_tim_sec(life_time), convert_tim_sec(life_utime), convert_tim_sec(life_stime)); 
       fflush(stdout);
       pthread_mutex_unlock(&(cpp->lock));
     }

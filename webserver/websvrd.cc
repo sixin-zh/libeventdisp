@@ -8,7 +8,6 @@ Conn * svrC; // server conn
 
 // Start the server
 void svr_start() {
-
   svrC = new Conn(NULL);
   Conn * peerC = NULL;   
 
@@ -24,7 +23,6 @@ void svr_start() {
   while (svrC!=NULL) {
     svr_conn_accept(svrC,peerC); /* assume no concurrent accept */
   }
-
 } 
 
 
@@ -36,15 +34,9 @@ void svr_stop() {
 
 /* Entrance */
 int main(int argc, char* argv[]) {
-
-  // if ((argc > 2) && (strncmp(argv[1], "stat", 4) == 0)) {
-  //   do_stat(argv[2]);
-  // }
-  // else {
   Dispatcher::init(NDISPATCHER,true);
   svrC = NULL; 
   svr_start(); 
-  // }
 
   return 0;
 }
