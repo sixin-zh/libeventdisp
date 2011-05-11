@@ -15,10 +15,10 @@
 #include <assert.h>
 #include <errno.h>
 
-#define DBGL -1
+#define DBGL 1
 
 // Server Parameters
-#define NDISPATCHER 1
+#define NDISPATCHER 8 // # of dispatchers
 
 #define MaxCSL  512   // SOMAXCONN
 
@@ -26,11 +26,11 @@
 #define ReadTimeoutSEC  5 // <- 30
 
 #define MaxACCEPT      4096 // hard limit
-#define DefaultLifeTIME  10 // sec
+#define DefaultLifeTIME   3 // sec
 //#define MinACCEPT      3048 // soft limit
 //#define LearningRATE   0.1
 
-#define MAXCSIZE 1048576  // 1M cache size
+#define MAXCSIZE 1048576  // cache size: 1M
 #define MAXKEYS 256       // cache key length
 #define CacheTaskID 0  
 #define ReadTaskID  (NDISPATCHER>1)?(cn->cfd%(NDISPATCHER-1))+1:0
@@ -38,7 +38,7 @@
 #define MAXRH   8192    // read head size
 #define MAXWH   8192    // write head size
 #define MAXWHL  256     // max 32 lines for head
-#define MAXWB   65536 //  // body block size 1024K
+#define MAXWB   65536   // body block size 1024K
 
 #include <time.h>
 #include <sys/time.h>
