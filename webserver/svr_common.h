@@ -11,24 +11,16 @@
 #include <sys/types.h>
 
 
-// Server Debug (verbal) Level -1,0,1,2,3,4,...
-#include <assert.h>
-#include <errno.h>
-
-#define DBGL 1
-
 // Server Parameters
-#define NDISPATCHER 8 // # of dispatchers
+#define NDISPATCHER 1 // # of dispatchers
 
 #define MaxCSL  512   // SOMAXCONN
 
 #define ReadTimeoutUSEC 0
 #define ReadTimeoutSEC  5 // <- 30
 
-#define MaxACCEPT      4096 // hard limit
+#define MaxACCEPT      1024 // hard limit
 #define DefaultLifeTIME   3 // sec
-//#define MinACCEPT      3048 // soft limit
-//#define LearningRATE   0.1
 
 #define MAXCSIZE 1048576  // cache size: 1M
 #define MAXKEYS 256       // cache key length
@@ -40,16 +32,19 @@
 #define MAXWHL  256     // max 32 lines for head
 #define MAXWB   65536   // body block size 1024K
 
+// DEBUG
+
+// Server Debug (verbal) Level -1,0,1,2,3,4,...
+#include <assert.h>
+#include <errno.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
-void print_times(const void * conn, const char * src, const char * dest, const timeval &prev, const timeval &curr, const timeval &prev_u, const timeval &curr_u, const timeval &prev_s, const timeval &curr_s, const size_t &qlen);
+#define DBGL 1
+
+void print_times(const void * conn, const char * src, const char * dest, const timeval &prev, const timeval &curr, 
+		 const timeval &prev_u, const timeval &curr_u, const timeval &prev_s, const timeval &curr_s, const size_t &qlen);
 double convert_tim_sec(const timeval &tim);
-void do_stat(const char * fpath);
 
 #endif
-
-//#include <arpa/inet.h>
-//#include <unistd.h>
-//#include <sys/wait.h>
