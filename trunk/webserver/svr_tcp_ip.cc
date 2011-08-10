@@ -113,11 +113,11 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
 
   if (DBGL >= 5) printf("[svr_conn_accept] svr=%p, peer=%p, hpkg=%p\n", cn, pk->cpn, pk);
 
-  // read header
-  if (svr_http_read(pk) == EHTTP_READ) return ERRCONN_AC;
+  // read header: let's go!
+  if (svr_http_read(pk) == EHTTP_READ) 
+    return ERRCONN_AC;
 
   return ERRCONN_OK;
-
 }
 
 

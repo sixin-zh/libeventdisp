@@ -2,6 +2,10 @@
 #include <dispatcher.h>
 using nyu_libeventdisp::Dispatcher;
 
+#include <svr_common.h>
+#include <svr_tcp_ip.h>
+#include <svr_http.h>
+
 #include <websvrd.h>
 
 Conn * svrC; // server conn
@@ -34,9 +38,13 @@ void svr_stop() {
 
 /* Entrance */
 int main(int argc, char* argv[]) {
-  Dispatcher::init(NDISPATCHER,true);
-  svrC = NULL; 
-  svr_start(); 
+  if (NDISPATCHER>1)
+    Dispatcher::init(NDISPATCHER,true);
+  else
+    Dispatcher::init();
+
+  svrC = NULL;
+  svr_start();
 
   return 0;
 }

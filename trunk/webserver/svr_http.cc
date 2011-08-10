@@ -8,7 +8,7 @@ static Cache _cache(MAXCSIZE);
 
 // Reply
 #define CRLF "\r\n"
-static const char * _websvrd      =  "websvrd/1.1";
+static const char * _websvrd      =  "Rain/1.1";
 static const char * _sline_200[2] = {"HTTP/1.0 200 OK"         , "HTTP/1.1 200 OK"};          //
 static const char * _sline_400[2] = {"HTTP/1.0 400 Bad Request", "HTTP/1.1 400 Bad Request"}; //
 static const char * _sline_404[2] = {"HTTP/1.0 404 Not Found"  , "HTTP/1.1 404 Not Found"};   //
@@ -31,6 +31,11 @@ ErrHTTP svr_http_read(HPKG * &pk) {
     printf("%d:", ReadTaskID);
     print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     printf("%ld, %ld, %ld\n", ru.ru_majflt-cn->curr_majflt, ru.ru_nvcsw-cn->curr_nvcsw, ru.ru_nivcsw-cn->curr_nivcsw); 
+
+    if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
+      printf("\t sec per ctx switch = %lf\n", 
+	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw));
+
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -74,17 +79,22 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname =  (char *) "svr_http_parse";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
     getrusage(RUSAGE_SELF, &ru);   
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
+
     size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) ReadTaskID);
     printf("%d:", ReadTaskID);
     print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     printf("%ld, %ld, %ld\n", ru.ru_majflt-cn->curr_majflt, ru.ru_nvcsw-cn->curr_nvcsw, ru.ru_nivcsw-cn->curr_nivcsw); 
+    if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
+      printf("\t sec per ctx switch = %lf\n", 
+	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw));
+
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -192,6 +202,10 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
     printf("%d:", ReadTaskID);
     print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     printf("%ld, %ld, %ld\n", ru.ru_majflt-cn->curr_majflt, ru.ru_nvcsw-cn->curr_nvcsw, ru.ru_nivcsw-cn->curr_nivcsw); 
+    if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
+      printf("\t sec per ctx switch = %lf\n", 
+	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw));
+
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
     getrusage(RUSAGE_SELF, &ru);
@@ -227,7 +241,7 @@ ErrHTTP svr_http_header_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbyte
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_header_rio";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -335,7 +349,7 @@ ErrHTTP svr_http_header_to_body_aio(HPKG * &pk, int &fd, void * buf, const size_
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_header_to_body_aio";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -376,7 +390,7 @@ ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_header_wio";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -432,7 +446,7 @@ ErrHTTP svr_http_header(HPKG * &pk) {
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_header";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -484,7 +498,7 @@ ErrHTTP svr_http_write_400(HPKG * &pk) {
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_write_400";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -533,7 +547,7 @@ ErrHTTP svr_http_fetch(HPKG * &pk) {
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_fetch";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -585,7 +599,7 @@ ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
 
  Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_body_wio";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -638,7 +652,7 @@ ErrHTTP svr_http_body_rio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_body_rio";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -684,7 +698,7 @@ ErrHTTP svr_http_body_pio(HPKG * &pk, int &fd, void * buf, const size_t &nbytes)
 
   Conn * cn = pk->cpn;
  
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_body_pio";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -721,7 +735,7 @@ ErrHTTP svr_http_body(HPKG * &pk) {
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_body";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -783,7 +797,7 @@ ErrHTTP svr_http_final_aio(HPKG * &pk, int & fd, const int &errcode) {
 
   Conn * cn = pk->cpn; 
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_final_aio";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -856,7 +870,7 @@ ErrHTTP svr_http_final(HPKG * &pk) {
 
   Conn * cn  = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_final";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
