@@ -114,7 +114,7 @@ class Conn {
       pthread_mutex_unlock(&(cpp->lock));
     }
 
-    if (DBGL == 2) { 
+    if (DBGL == 1) { 
       struct timeval tim; struct rusage ru;
       gettimeofday(&tim,NULL);
       getrusage(RUSAGE_SELF, &ru);
