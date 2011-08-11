@@ -33,8 +33,10 @@ ErrHTTP svr_http_read(HPKG * &pk) {
     printf("%ld, %ld, %ld\n", ru.ru_majflt-cn->curr_majflt, ru.ru_nvcsw-cn->curr_nvcsw, ru.ru_nivcsw-cn->curr_nivcsw); 
 
     if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
-      printf("\t sec per ctx switch = %lf\n", 
-	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw));
+      printf("\t sec per ctx switch = %lf, num conns = %zu, num threads = %d \n", 
+	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw), 
+	     cn->cpp->nc,
+	     0);
 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
@@ -191,7 +193,7 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
 
   Conn * cn = pk->cpn;
 
-  if (DBGL >= 1) {
+  if (DBGL >= 2) {
     char * cname = (char *) "svr_http_parse_aio";
     struct timeval tim; struct rusage ru;
     gettimeofday(&tim,NULL);
@@ -203,8 +205,9 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
     print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     printf("%ld, %ld, %ld\n", ru.ru_majflt-cn->curr_majflt, ru.ru_nvcsw-cn->curr_nvcsw, ru.ru_nivcsw-cn->curr_nivcsw); 
     if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
-      printf("\t sec per ctx switch = %lf\n", 
-	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw));
+      printf("\t sec per ctx switch = %lf, num conns = %zu\n", 
+	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw), 
+	     cn->cpp->nc);
 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
