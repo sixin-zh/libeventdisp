@@ -6,6 +6,8 @@
 #include <cstring>
 #include <cerrno>
 
+#include <stdio.h>
+
 using nyu_libeventdisp::Dispatcher;
 using std::tr1::bind;
 using std::tr1::function;
@@ -40,7 +42,6 @@ struct AIOSigHandlerInfo {
 // Callback function for completion of asynchronous read/write.
 void aioDone(sigval_t signal) {
 
-
   AIOSigHandlerInfo* origInfo =
       reinterpret_cast<AIOSigHandlerInfo*>(signal.sival_ptr);
   aiocb *aioCB = origInfo->aioCB;
@@ -66,6 +67,38 @@ void aioDone(sigval_t signal) {
   delete origInfo;
 }
 
+void aio_done(int signo, siginfo_t *info, void *context) {
+
+  // printf("signo %d\n", signo);
+
+  if (info->si_signo == SIGIO) {   
+     AIOSigHandlerInfo* origInfo =
+       reinterpret_cast<AIOSigHandlerInfo*>(info->si_value.sival_ptr);
+
+     aiocb *aioCB = origInfo->aioCB;
+     IOCallback *callback = origInfo->callback;
+     
+     int status = aio_error(aioCB);
+     if (status == 0) {
+       if (callback != NULL && callback->okCB != NULL) {
+	 ssize_t ioResult = aio_return(aioCB);
+	 Dispatcher::instance()->enqueue
+	   (new UnitTask(bind(*callback->okCB, aioCB->aio_fildes,
+			      const_cast<void *>(aioCB->aio_buf),
+			      ioResult), callback->id));
+       }
+     }
+     else if (callback != NULL && callback->errCB != NULL) {
+       Dispatcher::instance()->enqueue
+	 (new UnitTask(bind(*callback->errCB, 
+			    aioCB->aio_fildes,
+			    status), 
+		       callback->id));
+     }
+     delete origInfo;
+  }
+}
+  
 // Checks the progress of the queued asynchronous I/O job and calls callback
 // upon successful completion or errorCallback upon failure.
 //
@@ -118,11 +151,27 @@ int aioSkeletonFunction(int (*aio_func)(aiocb *), int fd, void *buff,
   aioCB->aio_offset = offset;
 
 #ifdef LIBEVENT_USE_SIG
-  aioCB->aio_sigevent.sigev_notify = SIGEV_THREAD;
-  aioCB->aio_sigevent.sigev_notify_function = aioDone;
-  aioCB->aio_sigevent.sigev_notify_attributes = NULL;
+
+  struct sigaction sig_act;
+  
+  // handler
+  sigemptyset(&sig_act.sa_mask);
+  sig_act.sa_flags = SA_SIGINFO;
+  sig_act.sa_sigaction = aio_done;
+
+  // singal
+  aioCB->aio_sigevent.sigev_notify = SIGEV_SIGNAL;
+  aioCB->aio_sigevent.sigev_signo = SIGIO;
   aioCB->aio_sigevent.sigev_value.sival_ptr =
-      static_cast<void *>(new AIOSigHandlerInfo(aioCB, callback));
+    static_cast<void *>(new AIOSigHandlerInfo(aioCB, callback));
+  
+  // aioCB->aio_sigevent.sigev_notify = SIGEV_THREAD;
+  // aioCB->aio_sigevent.sigev_notify_function = aioDone;
+  // aioCB->aio_sigevent.sigev_notify_attributes = NULL;
+  
+  // register
+  sigaction(SIGIO, &sig_act, NULL); 
+
 #endif
   
   int ret = aio_func(aioCB);

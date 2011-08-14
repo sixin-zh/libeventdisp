@@ -50,6 +50,8 @@ struct IOCallback {
 
 // Reads contents of a file descriptor given the maximum length.
 //
+// ! The call process should expect EINTER while sleep
+//
 // Params:
 //  fd - the file descriptor
 //  buff - the buffer to contain the data. Caller is responsible for making sure
@@ -74,6 +76,8 @@ int aio_read(int fd, void *buff, size_t len, off_t offset,
              IOCallback *callback);
 
 // Writes contents of the buffer to the given file descriptor.
+//
+// ! The call process should expect EINTER while sleep
 //
 // Params:
 //  fd - the file descriptor
