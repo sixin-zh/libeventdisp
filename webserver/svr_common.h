@@ -20,7 +20,7 @@
 #define ReadTimeoutSEC  5 // <- 30
 
 #define MaxACCEPT      1024 // hard limit
-#define DefaultLifeTIME   3 // sec
+#define ExpectedLifeTIME   1 // sec
 
 #define MAXCSIZE 1048576  // cache size: 1M
 #define MAXKEYS 256       // cache key length
@@ -33,15 +33,13 @@
 #define MAXWB   65536   // body block size 1024K
 
 // DEBUG
+#define DBGL 0 // Server Debug (verbal) Level -1,0,1,2,3,4,...
 
-// Server Debug (verbal) Level -1,0,1,2,3,4,...
 #include <assert.h>
 #include <errno.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-
-#define DBGL 1
 
 void print_times(const void * conn, const char * src, const char * dest, const timeval &prev, const timeval &curr, 
 		 const timeval &prev_u, const timeval &curr_u, const timeval &prev_s, const timeval &curr_s, const size_t &qlen);

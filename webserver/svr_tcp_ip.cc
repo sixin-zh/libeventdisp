@@ -80,14 +80,21 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   // when accept limit exceeded
   while (MaxACCEPT < cn->nc) {
     if (DBGL >= 2) printf("[svr_conn_accept] max accept pool exceeded: %zu\n", cn->nc); // when accept limit exceeded
-    sleep(DefaultLifeTIME);
+    sleep(ExpectedLifeTIME);
   }
 
   // wait to accept (in an 'endless' loop)
   int connfd = accept(cn->cfd, (SVR_SA *) (SVR_SA *) NULL, NULL);
+
+  // while (errno == EINTR) {
+  // printf("accept fd = %d, errno = %d \n", connfd, errno);
+  //   connfd = accept(cn->cfd, (SVR_SA *) (SVR_SA *) NULL, NULL);
+  // }
+
   if (connfd < 0) {
-    if (DBGL >= 2) printf("[svr_conn_accept] accept fail, errorno: %d\n", errno); // when fd limit exceeded
-    sleep(DefaultLifeTIME);
+    if (DBGL >= 2) printf("[svr_conn_accept] accept fail, errorno: %d\n", errno); // when fd limit exceeded or ...
+    //    if (errno != EINTR)
+    //  sleep(ExpectedLifeTIME);
     return ERRCONN_AC;
   }
   

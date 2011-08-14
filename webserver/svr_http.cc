@@ -36,7 +36,7 @@ ErrHTTP svr_http_read(HPKG * &pk) {
       printf("\t sec per ctx switch = %lf, num conns = %zu, num threads = %d \n", 
 	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw), 
 	     cn->cpp->nc,
-	     0);
+	     -1);
 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
