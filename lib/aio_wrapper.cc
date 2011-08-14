@@ -6,7 +6,12 @@
 #include <cstring>
 #include <cerrno>
 
-#include <stdio.h>
+#include "pthread.h"
+#include "stdio.h"
+
+
+#define BIND std::tr1::bind
+
 
 using nyu_libeventdisp::Dispatcher;
 using std::tr1::bind;
@@ -69,8 +74,6 @@ void aioDone(sigval_t signal) {
 
 void aio_done(int signo, siginfo_t *info, void *context) {
 
-  // printf("signo %d\n", signo);
-
   if (info->si_signo == SIGIO) {   
      AIOSigHandlerInfo* origInfo =
        reinterpret_cast<AIOSigHandlerInfo*>(info->si_value.sival_ptr);
@@ -79,6 +82,9 @@ void aio_done(int signo, siginfo_t *info, void *context) {
      IOCallback *callback = origInfo->callback;
      
      int status = aio_error(aioCB);
+
+     printf("aio_done: status = %d, tid = %ld\n", status, (long int) pthread_self());
+
      if (status == 0) {
        if (callback != NULL && callback->okCB != NULL) {
 	 ssize_t ioResult = aio_return(aioCB);
@@ -97,6 +103,7 @@ void aio_done(int signo, siginfo_t *info, void *context) {
      }
      delete origInfo;
   }
+
 }
   
 // Checks the progress of the queued asynchronous I/O job and calls callback
@@ -225,12 +232,24 @@ IOCallback::~IOCallback() {
 
 int aio_read(int fd, void *buff, size_t len, off_t offset,
              IOCallback *callback) {
+
+  // return Dispatcher::instance()->enqueue
+  //   (new UnitTask
+  //    (BIND(aioSkeletonFunction, ::aio_read, fd, buff, len, offset, callback), 
+  //     callback->id));
+
   return aioSkeletonFunction(::aio_read, fd, buff, len, offset, callback);
 }
 
 int aio_write(int fd, void *buff, size_t len, off_t offset,
               IOCallback *callback) {
+
+  // return Dispatcher::instance()->enqueue
+  //   (new UnitTask
+  //    (BIND(aioSkeletonFunction, ::aio_write, fd, buff, len, offset, callback), 
+  //     callback->id));
   return aioSkeletonFunction(::aio_write, fd, buff, len, offset, callback);
 }
-}
+
+} // end namespace
 
