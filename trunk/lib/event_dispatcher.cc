@@ -3,6 +3,9 @@
 #include "event_dispatcher.h"
 #include "thread.h"
 
+#include "pthread.h"
+#include "stdio.h"
+
 namespace nyu_libeventdisp {
 
 // Notes:
@@ -31,7 +34,10 @@ EventDispatcher::~EventDispatcher() {
 }
 
 bool EventDispatcher::enqueueTask(UnitTask *newTask) {
+
+  printf("enqueue: %ld get queueMutex\n", (long int) pthread_self());
   ScopedLock scopedQueue(&queueMutex_);
+  printf("enqueue: %ld got queueMutex\n", (long int) pthread_self());
 
   // It's okay to accept the new task if the stop method was called beyond this
   // point. So no need to acquire stoppedMutex_.
@@ -39,9 +45,12 @@ bool EventDispatcher::enqueueTask(UnitTask *newTask) {
     taskQueue_.push(newTask);
 
     {
+      printf("enqueue: %ld get taskCountMutex\n", (long int) pthread_self());
       ScopedLock ScopedTaskCount(&taskCountMutex_);
+      printf("enqueue: %ld got taskCountMutex\n", (long int) pthread_self());
       taskCount_[newTask->id]++;
     }
+    printf("enqueue: taskCountMutex\n", (long int) pthread_self());
     
     newTaskCond_.signal();
   }
@@ -85,10 +94,15 @@ void EventDispatcher::eventLoop(void) {
     UnitTask *nextTask;
     
     {
+      printf("front: %ld get queueMutex\n", (long int) pthread_self());
       ScopedLock sl(&queueMutex_);
+      printf("front: %ld got queueMutex\n", (long int) pthread_self());
+
       while (taskQueue_.empty() && !isDying_) {
         // Use timed wait to break from waiting to allow destructor to proceed
+	printf("wait: %ld\n", (long int) pthread_self());
         newTaskCond_.timedWait(&queueMutex_, WAIT_TIMEOUT);
+	// mask
       }
 
       if (isDying_ && taskQueue_.empty()) {
@@ -98,20 +112,30 @@ void EventDispatcher::eventLoop(void) {
       nextTask = taskQueue_.front();
       isExecuting_ = true;
     }
+    printf("front: %ld release queuetMutex\n", (long int) pthread_self());
+    printf("front: %ld release queuetMutex\n", (long int) pthread_self());
 
     if (!isDying_) {
       // Note: There is a chance that nextTask will call enqueueTask
+      printf("execting tid = %ld\n", (long int) pthread_self());
       nextTask->task();
     }
 
     {
+      printf("pop: %ld get queueMutex\n", (long int) pthread_self());
       ScopedLock sl(&queueMutex_);
+      printf("pop: %ld got queueMutex\n", (long int) pthread_self());
+
       taskQueue_.pop();
       isExecuting_ = false;
 
+      printf("pop: %ld get taskCountMutex\n", (long int) pthread_self());
       ScopedLock ScopedTaskCount(&taskCountMutex_);
+      printf("pop: %ld got taskCountMutex\n", (long int) pthread_self());
       taskCount_[nextTask->id]--;
     }
+    printf("pop: %ld release queuetMutex\n", (long int) pthread_self());
+    printf("pop: %ld release taskCountMutex\n", (long int) pthread_self());
 
     delete nextTask;
   }

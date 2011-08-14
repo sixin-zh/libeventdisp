@@ -8,6 +8,10 @@ using nyu_libeventdisp::Dispatcher;
 
 #include <websvrd.h>
 
+#include <sys/types.h>
+#include <unistd.h>
+
+
 Conn * svrC; // server conn
 
 // Start the server
@@ -38,6 +42,9 @@ void svr_stop() {
 
 /* Entrance */
 int main(int argc, char* argv[]) {
+
+  printf("main tid = %ld\n", (long int) pthread_self());
+
   if (NDISPATCHER>1)
     Dispatcher::init(NDISPATCHER,true);
   else

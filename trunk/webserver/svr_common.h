@@ -10,17 +10,16 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-
 // Server Parameters
 #define NDISPATCHER 1 // # of dispatchers
 
 #define MaxCSL  512   // SOMAXCONN
 
-#define ReadTimeoutUSEC 0
 #define ReadTimeoutSEC  5 // <- 30
+#define ReadTimeoutUSEC 0
 
 #define MaxACCEPT      1024 // hard limit
-#define ExpectedLifeTIME   1 // sec
+#define ExpectedLifeTIME  1 // sec
 
 #define MAXCSIZE 1048576  // cache size: 1M
 #define MAXKEYS 256       // cache key length

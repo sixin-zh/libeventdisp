@@ -32,11 +32,11 @@ ErrHTTP svr_http_read(HPKG * &pk) {
     print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     printf("%ld, %ld, %ld\n", ru.ru_majflt-cn->curr_majflt, ru.ru_nvcsw-cn->curr_nvcsw, ru.ru_nivcsw-cn->curr_nivcsw); 
 
-    if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
-      printf("\t sec per ctx switch = %lf, num conns = %zu, num threads = %d \n", 
-	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw), 
-	     cn->cpp->nc,
-	     -1);
+    // if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
+    //   printf("\t sec per ctx switch = %lf, num conns = %zu, num threads = %d \n", 
+    // 	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw), 
+    // 	     cn->cpp->nc,
+    // 	     -1);
 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
@@ -62,7 +62,7 @@ ErrHTTP svr_http_read(HPKG * &pk) {
   IOCallback    * ioCB  = new IOCallback(okCB, errCB, ReadTaskID);
 
   int nret = aio_read(cn->cfd, static_cast<void *> (pk->chead.p), MAXRH-1, 0, ioCB); // end with '\0' 
-  if (DBGL >= 0) assert(nret == 0);
+  //  if (DBGL >= 0) assert(nret == 1);
 
   return EHTTP_OK;
 }
@@ -93,9 +93,10 @@ ErrHTTP svr_http_parse(HPKG * &pk) {
     printf("%d:", ReadTaskID);
     print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     printf("%ld, %ld, %ld\n", ru.ru_majflt-cn->curr_majflt, ru.ru_nvcsw-cn->curr_nvcsw, ru.ru_nivcsw-cn->curr_nivcsw); 
-    if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
-      printf("\t sec per ctx switch = %lf\n", 
-	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw));
+
+    // if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
+    //   printf("\t sec per ctx switch = %lf\n", 
+    // 	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw));
 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
@@ -204,10 +205,11 @@ ErrHTTP svr_http_parse_aio(HPKG * &pk, int & fd, void * buf, const size_t &nbyte
     printf("%d:", ReadTaskID);
     print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     printf("%ld, %ld, %ld\n", ru.ru_majflt-cn->curr_majflt, ru.ru_nvcsw-cn->curr_nvcsw, ru.ru_nivcsw-cn->curr_nivcsw); 
-    if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
-      printf("\t sec per ctx switch = %lf, num conns = %zu\n", 
-	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw), 
-	     cn->cpp->nc);
+
+    // if ( (ru.ru_nvcsw-cn->curr_nvcsw) > 0)
+    //   printf("\t sec per ctx switch = %lf, num conns = %zu\n", 
+    // 	     (convert_tim_sec(tim) - convert_tim_sec(cn->curr_time)) / (ru.ru_nvcsw-cn->curr_nvcsw), 
+    // 	     cn->cpp->nc);
 
     pthread_mutex_unlock(&(cn->cpp->lock));
     snprintf(cn->curr_name, MAXCLOC, "%s", cname);
@@ -436,7 +438,7 @@ ErrHTTP svr_http_header_wio(HPKG * &pk, const CacheData &cd) {
   IOCallback    * ioCB  = new IOCallback(okCB, errCB, CacheTaskID); // [CacheTaskID]
 
   int nret = aio_write(cn->cfd, const_cast<char *> (cd.data), cd.size, 0, ioCB); 
-  if (DBGL >= 0) assert(nret == 0); //  return svr_http_final(pk);
+  //  if (DBGL >= 0) assert(nret == 1); //  return svr_http_final(pk);
 
   return EHTTP_OK;
 }
@@ -537,7 +539,7 @@ ErrHTTP svr_http_write_400(HPKG * &pk) {
   pk->chead.p = (char*) malloc(_ss);
   pk->chead.n = snprintf(pk->chead.p, _ss, "%s%s%s", _sline_400[1], CRLF, CRLF);
   int nret = aio_write(cn->cfd, (void *) pk->chead.p, pk->chead.n, 0, ioCB);
-  if (DBGL >= 0) assert(nret == 0); // return svr_http_final(pk);
+  //  if (DBGL >= 0) assert(nret == 1); // return svr_http_final(pk);
   
   return EHTTP_OK;
 }
@@ -642,7 +644,7 @@ ErrHTTP svr_http_body_wio(HPKG * &pk,  const CacheData &cd) {
   IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2));
   IOCallback    * ioCB  = new IOCallback(okCB, errCB, CacheTaskID); // [CacheTaskID]
   int nret = aio_write(cn->cfd, const_cast<char *> (cd.data), cd.size, 0, ioCB); 
-  if (DBGL >= 0) assert(nret == 0); //  return svr_http_final(pk);
+  //  if (DBGL >= 0) assert(nret == 1); //  return svr_http_final(pk);
 
   return EHTTP_OK;
 }
@@ -786,7 +788,7 @@ ErrHTTP svr_http_body(HPKG * &pk) {
     IOErrCallback * errCB = new IOErrCallback(BIND(svr_http_final_aio, pk, _1, _2)); // to cancel Reservation
     IOCallback    * ioCB  = new IOCallback(okCB, errCB, CacheTaskID); // [CacheTaskID]
     int nret = aio_read(pk->hfd, static_cast<void *> (pk->cbody.p), MAXWB, pk->tr_offset, ioCB);
-    if (DBGL >=0) assert(nret == 0); // cancelReseration,  return svr_http_final(pk);
+    //    if (DBGL >=0) assert(nret == 1); // cancelReseration,  return svr_http_final(pk);
   }
 
   return EHTTP_OK;
