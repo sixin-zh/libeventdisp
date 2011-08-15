@@ -20,6 +20,9 @@
 #include <pthread.h>
 #include <sys/time.h> // gettimeofday
 
+
+#include <stdio.h>
+
 // Convenient wrappers around
 // + pthread_mutex
 // + pthread_cond
@@ -31,14 +34,21 @@
 namespace base {
 
 class Mutex {
+
 public:
-  Mutex()         { pthread_mutex_init(&m_, NULL); }
+  Mutex()         { 
+    pthread_mutexattr_t m_attr;
+    pthread_mutexattr_settype(&m_attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&m_, &m_attr);    
+    //m_ = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+  }
   ~Mutex()        { pthread_mutex_destroy(&m_); }
 
-  void lock()     { pthread_mutex_lock(&m_); }
-  void unlock()   { pthread_mutex_unlock(&m_); }
+  int lock()     { return pthread_mutex_lock(&m_); }
+  int unlock()   { return pthread_mutex_unlock(&m_); }
 
 private:
+
   friend class ConditionVar;
 
   pthread_mutex_t m_;
@@ -50,8 +60,16 @@ private:
 
 class ScopedLock {
 public:
-  explicit ScopedLock(Mutex* lock) : m_(lock) { m_->lock(); }
-  ~ScopedLock()   { m_->unlock(); }
+  explicit ScopedLock(Mutex* lock) : m_(lock) { 
+    m_->lock();
+    //printf("%ld ready to lock %p\n", (long int) pthread_self(), m_);
+    //printf("%ld lock[%p] status = %d\n", (long int) pthread_self(), m_, m_->lock());
+  }
+  ~ScopedLock()   { 
+    m_->unlock();
+    //    printf("%ld ready to unlock %p\n", (long int) pthread_self(), m_);
+    //printf("%ld unlock[%p] status = %d\n", (long int) pthread_self(), m_, m_->unlock());
+  }
 
 private:
   Mutex* m_;

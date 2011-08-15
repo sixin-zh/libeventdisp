@@ -19,14 +19,16 @@ pthread_t makeThread(ThreadBody body) {
   // itself. Ownership of the copy is transferred if the thread is
   // successfully created.
   ThreadBody* copy = new ThreadBody(body);
-
   void* arg = reinterpret_cast<void*>(copy);
+
   pthread_t thread;
+  // create thread
   if (pthread_create(&thread, NULL, threadFunction, arg) != 0) {
     perror("Can't create thread");
     delete copy;
     exit(1);
-  }
+  }  
+
   return thread;
 }
 
