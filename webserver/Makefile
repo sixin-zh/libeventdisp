@@ -14,13 +14,13 @@ LIBEVENTDISP_BIN_DIR = $(SVRD_BIN_DIR)/libsvrd
 
 INCFLAGS += -I$(LIBEVENTDISP_INC_DIR)
 LIBFLAGS += -L$(LIBEVENTDISP_BIN_DIR) -leventdisp -lpthread -lrt
-CXXFLAGS += -g -Wall -Wextra
+CXXFLAGS += -g -Wall -Wextra -O0
 
 TARGETS = websvrd
 
 .PHONY:
 
-install: 	cleana blib migrate $(TARGETS) cleano start
+install: 	cleana bilib migrate $(TARGETS) cleano start
 		@echo TODO: export LD_LIBRARY_PATH="$(LIBEVENTDISP_BIN_DIR)"
 		@echo Built OK ! 
 
@@ -31,10 +31,11 @@ websvrd: cache.od svr_common.od svr_tcp_ip.od svr_http.od websvrd.od
 	 @$(CXX) $(CXXFLAGS) $(INCFLAGS) $(LIBFLAGS) $^ -o $(SVRD_BIN_DIR)/$@
 
 .PHONY:
-blib:   
+bilib:   
 	@echo Build lib...
 	@-cd $(LIBEVENTDISP_SRC_DIR) ; \
-	make
+	make clean; \
+	make;
 
 .PHONY:
 start:

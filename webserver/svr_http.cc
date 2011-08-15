@@ -27,7 +27,7 @@ ErrHTTP svr_http_read(HPKG * &pk) {
     getrusage(RUSAGE_SELF, &ru);
     assert(cn != NULL); assert(cn->cpp != NULL);
     pthread_mutex_lock(&(cn->cpp->lock));
-    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID ) ReadTaskID);
+    size_t qlen = Dispatcher::instance()->getSize((TaskGroupID) ReadTaskID);
     printf("%d:", ReadTaskID);
     print_times((void *) cn, cn->curr_name, cname, cn->curr_time, tim, cn->curr_utime, ru.ru_utime, cn->curr_stime, ru.ru_stime, qlen); 
     printf("%ld, %ld, %ld\n", ru.ru_majflt-cn->curr_majflt, ru.ru_nvcsw-cn->curr_nvcsw, ru.ru_nivcsw-cn->curr_nivcsw); 

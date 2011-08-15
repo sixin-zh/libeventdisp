@@ -6,9 +6,15 @@
 #include <cstring>
 #include <cerrno>
 
-#include "pthread.h"
-#include "stdio.h"
+#define _GNU_SOURCE
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
 
+
+#include "pthread.h"
+#include <ucontext.h>
+#include "stdio.h"
 
 #define BIND std::tr1::bind
 
@@ -39,7 +45,6 @@ struct AIOSigHandlerInfo {
     if (callback != NULL) {
       delete callback;
     }
-
     delete aioCB;
   }
 };
@@ -74,38 +79,56 @@ void aioDone(sigval_t signal) {
 
 void aio_done(int signo, siginfo_t *info, void *context) {
 
+  //  ucontext_t thread_context;
+
+  // printf("%ld aio_done\n", (long int) pthread_self());
+
   if (info->si_signo == SIGIO) {   
-     AIOSigHandlerInfo* origInfo =
-       reinterpret_cast<AIOSigHandlerInfo*>(info->si_value.sival_ptr);
+    
+    //ucontext_t scheduler_context;
 
-     aiocb *aioCB = origInfo->aioCB;
-     IOCallback *callback = origInfo->callback;
-     
-     int status = aio_error(aioCB);
+    // saves the thread context
+    //thread_context = *((ucontext_t*)context);
 
-     printf("aio_done: status = %d, tid = %ld\n", status, (long int) pthread_self());
+    AIOSigHandlerInfo* origInfo =
+      reinterpret_cast<AIOSigHandlerInfo*>(info->si_value.sival_ptr);
+    
+      //*origInfo;
+    
+    aiocb *aioCB = origInfo->aioCB;
+    IOCallback *callback = origInfo->callback;
+      
+    int status = aio_error(aioCB);
 
-     if (status == 0) {
-       if (callback != NULL && callback->okCB != NULL) {
-	 ssize_t ioResult = aio_return(aioCB);
-	 Dispatcher::instance()->enqueue
-	   (new UnitTask(bind(*callback->okCB, aioCB->aio_fildes,
-			      const_cast<void *>(aioCB->aio_buf),
-			      ioResult), callback->id));
-       }
-     }
-     else if (callback != NULL && callback->errCB != NULL) {
-       Dispatcher::instance()->enqueue
-	 (new UnitTask(bind(*callback->errCB, 
-			    aioCB->aio_fildes,
-			    status), 
-		       callback->id));
-     }
-     delete origInfo;
+    if (status == 0) {
+      if (callback != NULL && callback->okCB != NULL) {
+	ssize_t ioResult = aio_return(aioCB);
+	Dispatcher::instance()->enqueue
+	  (new UnitTask(bind(*callback->okCB, aioCB->aio_fildes,
+			     const_cast<void *>(aioCB->aio_buf),
+			     ioResult), callback->id));
+	//	 printf("enqueue[aio]: %ld release queuetMutex\n", (long int) pthread_self());
+      }
+    }
+    else if (callback != NULL && callback->errCB != NULL) {
+      Dispatcher::instance()->enqueue
+	(new UnitTask(bind(*callback->errCB, 
+			   aioCB->aio_fildes,
+			   status), 
+		      callback->id));
+      //printf("enqueue[aio]: %ld release queuetMutex\n", (long int) pthread_self());
+    }
+    delete origInfo;
+
+    // swaps back to scheduler context
+    //setcontext(&thread_context);
+
+  } else {
+    //printf("%ld aio_done with UNKNOWN SIG (%d)\n", (long int) pthread_self(), info->si_signo);
   }
 
 }
-  
+
 // Checks the progress of the queued asynchronous I/O job and calls callback
 // upon successful completion or errorCallback upon failure.
 //
@@ -145,6 +168,7 @@ void checkIOProgress(aiocb *aioCB, IOCallback *callback) {
   }
 }
 
+
 int aioSkeletonFunction(int (*aio_func)(aiocb *), int fd, void *buff,
                         size_t len, off_t offset, IOCallback *callback) {
 
@@ -167,7 +191,8 @@ int aioSkeletonFunction(int (*aio_func)(aiocb *), int fd, void *buff,
   sig_act.sa_sigaction = aio_done;
 
   // singal
-  aioCB->aio_sigevent.sigev_notify = SIGEV_SIGNAL;
+  aioCB->aio_sigevent.sigev_notify = SIGEV_SIGNAL; //SIGEV_SIGNAL_THREAD; //SIGEV_SIGNAL;
+  //  aioCB->aio_sigevent._sigev_un._tid = syscall(SYS_gettid); // gettid(); //// pthread_self();
   aioCB->aio_sigevent.sigev_signo = SIGIO;
   aioCB->aio_sigevent.sigev_value.sival_ptr =
     static_cast<void *>(new AIOSigHandlerInfo(aioCB, callback));
@@ -184,27 +209,31 @@ int aioSkeletonFunction(int (*aio_func)(aiocb *), int fd, void *buff,
   int ret = aio_func(aioCB);
 
   if (ret >= 0) {
-#ifndef LIBEVENT_USE_SIG
+
+#ifdef LIBEVENT_USE_SIG
+
+#else
     checkIOProgress(aioCB, callback);
 #endif
+
   }
   else {
+    printf("aio error\n");
+#ifdef LIBEVENT_USE_SIG
+    delete reinterpret_cast<AIOSigHandlerInfo *>
+      (aioCB->aio_sigevent.sigev_value.sival_ptr);
+#else
     if (callback != NULL) {
       if (callback->errCB != NULL) {
         Dispatcher::instance()->enqueue(
             new UnitTask(bind(*callback->errCB, aioCB->aio_fildes,
-                              errno), callback->id));
+                              errno), callback->id)); // notify io error
       }
-
       delete callback;
     }
-
-#ifdef LIBEVENT_USE_SIG
-    delete reinterpret_cast<AIOSigHandlerInfo *>(
-        aioCB->aio_sigevent.sigev_value.sival_ptr);
-#endif
-    
     delete aioCB;
+#endif
+
   }
 
   return ret;
@@ -250,6 +279,9 @@ int aio_write(int fd, void *buff, size_t len, off_t offset,
   //     callback->id));
   return aioSkeletonFunction(::aio_write, fd, buff, len, offset, callback);
 }
+
+  
+
 
 } // end namespace
 

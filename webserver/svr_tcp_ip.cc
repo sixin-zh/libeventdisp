@@ -87,7 +87,7 @@ ErrConn svr_conn_accept(Conn * &cn, Conn * &pn) {
   int connfd = accept(cn->cfd, (SVR_SA *) (SVR_SA *) NULL, NULL);
 
   // while (errno == EINTR) {
-  printf("accept fd = %d, errno = %d \n", connfd, errno);
+  // printf("accept fd = %d, errno = %d \n", connfd, errno);
   //   connfd = accept(cn->cfd, (SVR_SA *) (SVR_SA *) NULL, NULL);
   // }
 
