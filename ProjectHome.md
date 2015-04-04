@@ -1,0 +1,1 @@
+NYU project for Honors Operating Systems Spring 2011. Implementation is based on the paper [Multiprocessor Support for Event-Driven Programs](http://www.scs.stanford.edu/~dm/home/papers/zeldovich:async-mp.pdf).

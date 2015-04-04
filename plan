@@ -1,0 +1,11 @@
+Basic plan:
+
+libasync
+libasync-smp
+scheduler activations
+
+Webproxy (TCP,...)
+Concurrent Webproxy (Shared Cache,...)
+
+
+
